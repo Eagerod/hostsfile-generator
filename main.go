@@ -6,7 +6,7 @@ import (
 	"flag"
 	"os"
 
-	daemon "github.com/Eagerod/hosts-file-daemon/cmd/hosts-file-daemon"
+	cmd "github.com/Eagerod/hosts-file-daemon/cmd/hosts-file-daemon"
 )
 
 func main() {
@@ -20,5 +20,5 @@ func main() {
 		os.Exit(1)
 	}
 
-	daemon.Run(*ip, *searchDomain)
+	cmd.Run(*ip, *searchDomain)
 }

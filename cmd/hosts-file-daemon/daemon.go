@@ -1,4 +1,4 @@
-package daemon
+package cmd
 
 import (
 	"context"
@@ -68,11 +68,14 @@ func ManageIngressChanges(clientset *kubernetes.Clientset, ingressIp string, hos
 
 		// For each host found, add a record to the hosts file.
 		// If this is an fqdn already, add it with a ., else add it as-is
-		for _, rule := range ingress.Spec.Rules {
-			if strings.HasSuffix(rule.Host, ingressIp) {
-				hosts.AddHostname(ingressIp, rule.Host+".")
-			} else {
-				hosts.AddHostname(ingressIp, rule.Host)
+		objectId := ingress.ObjectMeta.Namespace + "/" + ingress.ObjectMeta.Name
+		if event.Type == "ADDED" {
+			for _, rule := range ingress.Spec.Rules {
+				if strings.HasSuffix(rule.Host, ingressIp) {
+					hosts.AddHostname(objectId, ingressIp, rule.Host+".")
+				} else {
+					hosts.AddHostname(objectId, ingressIp, rule.Host)
+				}
 			}
 		}
 
@@ -107,7 +110,10 @@ func ManageServiceChanges(clientset *kubernetes.Clientset, searchDomain string, 
 		serviceIP := service.Spec.LoadBalancerIP
 
 		fqdn := serviceName + "." + searchDomain + "."
-		hosts.AddHostname(serviceIP, fqdn)
+		objectId := service.ObjectMeta.Namespace + "/" + service.ObjectMeta.Name
+		if event.Type == "ADDED" {
+			hosts.AddHostname(objectId, serviceIP, fqdn)
+		}
 		fmt.Println(hosts)
 	}
 }
