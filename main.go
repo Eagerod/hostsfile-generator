@@ -20,5 +20,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	cmd.Run(*ip, *searchDomain)
+	// Try to pull a couple values out of the environment.
+	// If they're there, cool; if not, let downstream errors report it.
+	serverIp := os.Getenv("SERVER_IP")
+	sat := os.Getenv("SERVICE_ACCOUNT_TOKEN")
+
+	cmd.Run(serverIp, sat, *ip, *searchDomain)
 }

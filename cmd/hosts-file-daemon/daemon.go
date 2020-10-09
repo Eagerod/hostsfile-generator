@@ -5,28 +5,53 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
 	"syscall"
 
 	"k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/rest"
 
 	"github.com/Eagerod/hosts-file-daemon/pkg/hostsfile"
 	"github.com/Eagerod/hosts-file-daemon/pkg/interrupt"
 )
 
-func Run(ingressIp string, searchDomain string) {
-	kubeconfig := filepath.Join(os.Getenv("HOME"), ".kube", "config")
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	if err != nil {
-		log.Fatal(err)
+func GetKubernetesClient(apiServerUrl string, authToken string) (*kubernetes.Clientset, error) {
+	// If running in the cluster, pull the service account token, else, pull
+	//   the token from an environment variable.
+	var config *rest.Config
+	if _, err := os.Stat("/var/run/secrets/kubernetes.io/serviceaccount/token"); !os.IsNotExist(err) {
+		// path/to/whatever does not exist
+		config, err = rest.InClusterConfig()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		config = &rest.Config{}
+		err := rest.SetKubernetesDefaults(config)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		groupVersion := schema.GroupVersion{}
+		url, str, err := rest.DefaultServerURL(apiServerUrl, "v1", groupVersion, true)
+		if err != nil {
+			return nil, err
+		}
+		config.Host = url.String()
+		config.APIPath = str
+		config.BearerToken = authToken
+		config.TLSClientConfig.Insecure = true
 	}
 
-	clientset, err := kubernetes.NewForConfig(config)
+	return kubernetes.NewForConfig(config)
+}
+
+func Run(clusterIp string, bearerToken string, ingressIp string, searchDomain string) {
+	clientset, err := GetKubernetesClient(clusterIp, bearerToken)
 	if err != nil {
 		log.Fatal(err)
 	}
