@@ -26,17 +26,18 @@ func NewConcurrentHostsFile() *ConcurrentHostsFile {
 	return &chf
 }
 
-func (chfptr *ConcurrentHostsFile) AddHostname(objectId string, ip string, hostname string) {
+func (chfptr *ConcurrentHostsFile) SetHostnames(objectId string, ip string, hostnames []string) {
 	chf := *chfptr
 	chf.lock.Lock()
-	entry, present := chf.entries[objectId]
-	if !present {
-		he := HostsEntry{ip, []string{}}
-		entry = &he
-		chf.entries[objectId] = entry
-	}
+	he := HostsEntry{ip, hostnames}
+	chf.entries[objectId] = &he
+	chf.lock.Unlock()
+}
 
-	entry.hosts = append(entry.hosts, hostname)
+func (chfptr *ConcurrentHostsFile) RemoveHostnames(objectId string) {
+	chf := *chfptr
+	chf.lock.Lock()
+	delete(chf.entries, objectId)
 	chf.lock.Unlock()
 }
 

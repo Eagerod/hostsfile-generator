@@ -69,14 +69,18 @@ func ManageIngressChanges(clientset *kubernetes.Clientset, ingressIp string, hos
 		// For each host found, add a record to the hosts file.
 		// If this is an fqdn already, add it with a ., else add it as-is
 		objectId := ingress.ObjectMeta.Namespace + "/" + ingress.ObjectMeta.Name
-		if event.Type == "ADDED" {
+		if event.Type == "ADDED" || event.Type == "MODIFIED" {
+			hostnames := []string{}
 			for _, rule := range ingress.Spec.Rules {
 				if strings.HasSuffix(rule.Host, ingressIp) {
-					hosts.AddHostname(objectId, ingressIp, rule.Host+".")
+					hostnames = append(hostnames, rule.Host+".")
 				} else {
-					hosts.AddHostname(objectId, ingressIp, rule.Host)
+					hostnames = append(hostnames, rule.Host)
 				}
 			}
+			hosts.SetHostnames(objectId, ingressIp, hostnames)
+		} else if event.Type == "DELETED" {
+			hosts.RemoveHostnames(objectId)
 		}
 
 		fmt.Println(hosts)
@@ -107,13 +111,16 @@ func ManageServiceChanges(clientset *kubernetes.Clientset, searchDomain string, 
 
 		// Serivces don't include the full search domain, so append it.
 		serviceName := service.ObjectMeta.Name
-		serviceIP := service.Spec.LoadBalancerIP
+		serviceIp := service.Spec.LoadBalancerIP
 
 		fqdn := serviceName + "." + searchDomain + "."
 		objectId := service.ObjectMeta.Namespace + "/" + service.ObjectMeta.Name
-		if event.Type == "ADDED" {
-			hosts.AddHostname(objectId, serviceIP, fqdn)
+		if event.Type == "ADDED" || event.Type == "MODIFIED" {
+			hosts.SetHostnames(objectId, serviceIp, []string{fqdn})
+		} else if event.Type == "DELETED" {
+			hosts.RemoveHostnames(objectId)
 		}
+
 		fmt.Println(hosts)
 	}
 }
