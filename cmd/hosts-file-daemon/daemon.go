@@ -57,18 +57,21 @@ func ManageIngressChanges(clientset *kubernetes.Clientset, ingressIp string, hos
 			log.Fatal("unexpected type")
 		}
 
+		objectId := ingress.ObjectMeta.Namespace + "/" + ingress.ObjectMeta.Name
+
 		ingressClass, ok := ingress.Annotations["kubernetes.io/ingress.class"]
 		if !ok {
+			fmt.Fprintf(os.Stderr, "Skipping ingress (%s) because it doesn't have an ingress class\n", objectId)
 			continue
 		}
 
 		if ingressClass != "nginx" {
+			fmt.Fprintf(os.Stderr, "Skipping ingress (%s) because it doesn't belong to NGINX Ingress Controller\n", objectId)
 			continue
 		}
 
 		// For each host found, add a record to the hosts file.
 		// If this is an fqdn already, add it with a ., else add it as-is
-		objectId := ingress.ObjectMeta.Namespace + "/" + ingress.ObjectMeta.Name
 		if event.Type == "ADDED" || event.Type == "MODIFIED" {
 			hostnames := []string{}
 			for _, rule := range ingress.Spec.Rules {
@@ -105,7 +108,10 @@ func ManageServiceChanges(clientset *kubernetes.Clientset, searchDomain string, 
 			log.Fatal("unexpected type")
 		}
 
+		objectId := service.ObjectMeta.Namespace + "/" + service.ObjectMeta.Name
+
 		if service.Spec.Type != "LoadBalancer" {
+			fmt.Fprintf(os.Stderr, "Skipping service (%s) because it isn't of type LoadBalancer\n", objectId)
 			continue
 		}
 
@@ -114,7 +120,6 @@ func ManageServiceChanges(clientset *kubernetes.Clientset, searchDomain string, 
 		serviceIp := service.Spec.LoadBalancerIP
 
 		fqdn := serviceName + "." + searchDomain + "."
-		objectId := service.ObjectMeta.Namespace + "/" + service.ObjectMeta.Name
 		if event.Type == "ADDED" || event.Type == "MODIFIED" {
 			hosts.SetHostnames(objectId, serviceIp, []string{fqdn})
 		} else if event.Type == "DELETED" {
