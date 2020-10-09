@@ -10,15 +10,16 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"k8s.io/api/core/v1"
+	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
-	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
-    metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-    
-    "github.com/Eagerod/hosts-file-daemon/pkg/hostsfile"
+
+	"github.com/Eagerod/hosts-file-daemon/pkg/hostsfile"
 )
 
 func main() {
@@ -88,15 +89,17 @@ func ManageIngressChanges(clientset *kubernetes.Clientset, ingressIP string, hos
 			continue
 		}
 
-		// If it's a redirect host, skip it.
-		// Have to append these to the existing ones, not skip.
-		_, isRedirect := ingress.Annotations["nginx.ingress.kubernetes.io/temporal-redirect"]
-		if isRedirect {
-			continue
+		// For each host found, add a record to the hosts file.
+		// If this is an fqdn already, add it with a ., else add it as-is
+		for _, rule := range ingress.Spec.Rules {
+			if strings.HasSuffix(rule.Host, ingressIP) {
+				hosts.AddHostname(ingressIP, rule.Host+".")
+			} else {
+				hosts.AddHostname(ingressIP, rule.Host)
+			}
 		}
 
-        hosts.AddHostname(ingressIP, ingress.Spec.Rules[0].Host)
-        fmt.Println(hosts)
+		fmt.Println(hosts)
 	}
 }
 
@@ -126,8 +129,8 @@ func ManageServiceChanges(clientset *kubernetes.Clientset, searchDomain string, 
 		serviceName := service.ObjectMeta.Name
 		serviceIP := service.Spec.LoadBalancerIP
 
-        fqdn := serviceName + "." + searchDomain
-        hosts.AddHostname(serviceIP, fqdn)
-        fmt.Println(hosts)
+		fqdn := serviceName + "." + searchDomain + "."
+		hosts.AddHostname(serviceIP, fqdn)
+		fmt.Println(hosts)
 	}
 }

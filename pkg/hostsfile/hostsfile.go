@@ -29,15 +29,15 @@ func NewConcurrentHostsFile() *ConcurrentHostsFile {
 func (chfptr *ConcurrentHostsFile) AddHostname(ip string, hostname string) {
 	chf := *chfptr
 	chf.lock.Lock()
-    entry, present := chf.entries[ip]
-    if !present {
+	entry, present := chf.entries[ip]
+	if !present {
 		fmt.Println("Didn't find", ip, hostname)
 		he := HostsEntry{ip, []string{}}
-        entry = &he
-        chf.entries[ip] = entry
-    }
+		entry = &he
+		chf.entries[ip] = entry
+	}
 
-    entry.hosts = append(entry.hosts, hostname)
+	entry.hosts = append(entry.hosts, hostname)
 	chf.lock.Unlock()
 }
 
@@ -48,7 +48,7 @@ func (chfptr *ConcurrentHostsFile) String() string {
 	for _, hostEntry := range chf.entries {
 		sb.WriteString(hostEntry.String())
 		sb.WriteString("\n")
-	} 
+	}
 	chf.lock.RUnlock()
 	return sb.String()
 }
