@@ -13,8 +13,14 @@ import (
 func main() {
 	ip := flag.String("ingress-ip", "", "IP address of the NGINX Ingress Controller.")
 	searchDomain := flag.String("search-domain", "", "Search domain to append to bare hostnames.")
+	version := flag.Bool("v", false, "Print the version and exit.")
 
 	flag.Parse()
+
+	if *version == true {
+		fmt.Println(cmd.VersionBuild)
+		return
+	}
 
 	if *ip == "" || *searchDomain == "" {
 		flag.Usage()
