@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"syscall"
+	"time"
 
 	"k8s.io/api/core/v1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -21,13 +22,54 @@ import (
 func Run(daemonConfig *DaemonConfig) {
 	hostsFile := hostsfile.NewConcurrentHostsFile()
 
-	go ManageIngressChanges(daemonConfig, hostsFile)
-	go ManageServiceChanges(daemonConfig, hostsFile)
+	updatesChannel := make(chan *string, 100)
+	defer close(updatesChannel)
+
+	go func() {
+		lastUpdate := time.Now()
+		for hostsfile := range updatesChannel {
+			// Check the length of the channel before doing anything.
+			// If there are more items in it, just let the next iteration
+			//    handle the update.
+			if len(updatesChannel) >= 1 {
+				continue
+			}
+
+			// If the last update was more than 60 seconds ago, write this one
+			//   immediately
+			if time.Now().Sub(lastUpdate).Minutes() >= 1 {
+				log.Println("Last update was more than 1 minute ago. Updating immediately.")
+				err := WriteHostsFileAndRestartPihole(daemonConfig, *hostsfile)
+				if err != nil {
+					log.Fatal(err)
+				}
+				lastUpdate = time.Now()
+				continue
+			}
+
+			// Wait 3 seconds.
+			log.Println("Waiting 1 seconds before attempting hostsfile update.")
+			time.Sleep(time.Second * 1)
+			if len(updatesChannel) >= 1 {
+				log.Println("Aborting hostsfile update. Newer hostsfile is pending.")
+				continue
+			}
+
+			err := WriteHostsFileAndRestartPihole(daemonConfig, *hostsfile)
+			if err != nil {
+				log.Fatal(err)
+			}
+			lastUpdate = time.Now()
+		}
+	}()
+
+	go ManageIngressChanges(daemonConfig, updatesChannel, hostsFile)
+	go ManageServiceChanges(daemonConfig, updatesChannel, hostsFile)
 
 	interrupt.WaitForAnySignal(syscall.SIGINT, syscall.SIGTERM)
 }
 
-func ManageIngressChanges(daemonConfig *DaemonConfig, hosts *hostsfile.ConcurrentHostsFile) {
+func ManageIngressChanges(daemonConfig *DaemonConfig, updatesChannel chan *string, hosts *hostsfile.ConcurrentHostsFile) {
 	api := daemonConfig.KubernetesClientSet.ExtensionsV1beta1()
 	listOptions := metav1.ListOptions{}
 	watcher, err := api.Ingresses("").Watch(context.Background(), listOptions)
@@ -37,7 +79,7 @@ func ManageIngressChanges(daemonConfig *DaemonConfig, hosts *hostsfile.Concurren
 	}
 
 	ch := watcher.ResultChan()
-	fmt.Println("Starting to monitor ingresses in all namespaces.")
+	log.Println("Starting to monitor ingresses in all namespaces.")
 
 	for event := range ch {
 		ingress, ok := event.Object.(*extensionsv1beta1.Ingress)
@@ -49,12 +91,12 @@ func ManageIngressChanges(daemonConfig *DaemonConfig, hosts *hostsfile.Concurren
 
 		ingressClass, ok := ingress.Annotations["kubernetes.io/ingress.class"]
 		if !ok {
-			fmt.Fprintf(os.Stderr, "Skipping ingress (%s) because it doesn't have an ingress class\n", objectId)
+			log.Printf("Skipping ingress (%s) because it doesn't have an ingress class\n", objectId)
 			continue
 		}
 
 		if ingressClass != "nginx" {
-			fmt.Fprintf(os.Stderr, "Skipping ingress (%s) because it doesn't belong to NGINX Ingress Controller\n", objectId)
+			log.Printf("Skipping ingress (%s) because it doesn't belong to NGINX Ingress Controller\n", objectId)
 			continue
 		}
 
@@ -74,19 +116,12 @@ func ManageIngressChanges(daemonConfig *DaemonConfig, hosts *hostsfile.Concurren
 			hosts.RemoveHostnames(objectId)
 		}
 
-		err := CopyFileToPod(daemonConfig, "/etc/pihole/kube.list", hosts.String())
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		err = ExecInPod(daemonConfig, []string{"pihole", "restartdns"})
-		if err != nil {
-			log.Fatal(err)
-		}
+		hostsFile := hosts.String()
+		updatesChannel <- &hostsFile
 	}
 }
 
-func ManageServiceChanges(daemonConfig *DaemonConfig, hosts *hostsfile.ConcurrentHostsFile) {
+func ManageServiceChanges(daemonConfig *DaemonConfig, updatesChannel chan *string, hosts *hostsfile.ConcurrentHostsFile) {
 	api := daemonConfig.KubernetesClientSet.CoreV1()
 	listOptions := metav1.ListOptions{}
 	watcher, err := api.Services("").Watch(context.Background(), listOptions)
@@ -96,7 +131,7 @@ func ManageServiceChanges(daemonConfig *DaemonConfig, hosts *hostsfile.Concurren
 	}
 
 	ch := watcher.ResultChan()
-	fmt.Println("Starting to monitor services in all namespaces.")
+	log.Printf("Starting to monitor services in all namespaces.")
 
 	for event := range ch {
 		service, ok := event.Object.(*v1.Service)
@@ -107,7 +142,7 @@ func ManageServiceChanges(daemonConfig *DaemonConfig, hosts *hostsfile.Concurren
 		objectId := service.ObjectMeta.Namespace + "/" + service.ObjectMeta.Name
 
 		if service.Spec.Type != "LoadBalancer" {
-			fmt.Fprintf(os.Stderr, "Skipping service (%s) because it isn't of type LoadBalancer\n", objectId)
+			log.Printf("Skipping service (%s) because it isn't of type LoadBalancer\n", objectId)
 			continue
 		}
 
@@ -122,16 +157,18 @@ func ManageServiceChanges(daemonConfig *DaemonConfig, hosts *hostsfile.Concurren
 			hosts.RemoveHostnames(objectId)
 		}
 
-		err := CopyFileToPod(daemonConfig, "/etc/pihole/kube.list", hosts.String())
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		err = ExecInPod(daemonConfig, []string{"pihole", "restartdns"})
-		if err != nil {
-			log.Fatal(err)
-		}
+		hostsFile := hosts.String()
+		updatesChannel <- &hostsFile
 	}
+}
+
+func WriteHostsFileAndRestartPihole(daemonConfig *DaemonConfig, hostsfile string) error {
+	err := CopyFileToPod(daemonConfig, "/etc/pihole/kube.list", hostsfile)
+	if err != nil {
+		return err
+	}
+
+	return ExecInPod(daemonConfig, []string{"pihole", "restartdns"})
 }
 
 func CopyFileToPod(daemonConfig *DaemonConfig, filepath string, contents string) error {
