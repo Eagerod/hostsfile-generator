@@ -3,7 +3,7 @@ GO := go
 MAIN_FILE := main.go
 
 BUILD_DIR := build
-EXECUTABLE := ingress-watcher-test
+EXECUTABLE := hostsfile-daemon
 BIN_NAME := $(BUILD_DIR)/$(EXECUTABLE)
 INSTALLED_NAME := /usr/local/bin/$(EXECUTABLE)
 
