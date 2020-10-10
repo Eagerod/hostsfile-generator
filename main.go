@@ -24,6 +24,7 @@ func main() {
 	// If they're there, cool; if not, let downstream errors report it.
 	serverIp := os.Getenv("SERVER_IP")
 	sat := os.Getenv("SERVICE_ACCOUNT_TOKEN")
+	piholePodName := os.Getenv("PIHOLE_POD_NAME")
 
-	cmd.Run(serverIp, sat, *ip, *searchDomain)
+	cmd.Run(serverIp, sat, *ip, piholePodName, *searchDomain)
 }

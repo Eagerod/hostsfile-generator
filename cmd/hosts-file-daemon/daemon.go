@@ -13,13 +13,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/remotecommand"
 
 	"github.com/Eagerod/hosts-file-daemon/pkg/hostsfile"
 	"github.com/Eagerod/hosts-file-daemon/pkg/interrupt"
 )
 
-func GetKubernetesClient(apiServerUrl string, authToken string) (*kubernetes.Clientset, error) {
+func GetKubernetesConfig(apiServerUrl string, authToken string) (*rest.Config, error) {
 	// If running in the cluster, pull the service account token, else, pull
 	//   the token from an environment variable.
 	var config *rest.Config
@@ -33,7 +35,7 @@ func GetKubernetesClient(apiServerUrl string, authToken string) (*kubernetes.Cli
 		config = &rest.Config{}
 		err := rest.SetKubernetesDefaults(config)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 
 		groupVersion := schema.GroupVersion{}
@@ -41,30 +43,33 @@ func GetKubernetesClient(apiServerUrl string, authToken string) (*kubernetes.Cli
 		if err != nil {
 			return nil, err
 		}
+
 		config.Host = url.String()
 		config.APIPath = str
 		config.BearerToken = authToken
 		config.TLSClientConfig.Insecure = true
 	}
 
-	return kubernetes.NewForConfig(config)
+	return config, nil
 }
 
-func Run(clusterIp string, bearerToken string, ingressIp string, searchDomain string) {
-	clientset, err := GetKubernetesClient(clusterIp, bearerToken)
+func Run(clusterIp string, bearerToken string, ingressIp string, piholePodName string, searchDomain string) {
+	config, err := GetKubernetesConfig(clusterIp, bearerToken)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	clientset, err := kubernetes.NewForConfig(config)
+
 	hostsFile := hostsfile.NewConcurrentHostsFile()
 
-	go ManageIngressChanges(clientset, ingressIp, hostsFile)
-	go ManageServiceChanges(clientset, searchDomain, hostsFile)
+	go ManageIngressChanges(clientset, config, piholePodName, ingressIp, hostsFile)
+	go ManageServiceChanges(clientset, config, piholePodName, searchDomain, hostsFile)
 
 	interrupt.WaitForAnySignal(syscall.SIGINT, syscall.SIGTERM)
 }
 
-func ManageIngressChanges(clientset *kubernetes.Clientset, ingressIp string, hosts *hostsfile.ConcurrentHostsFile) {
+func ManageIngressChanges(clientset *kubernetes.Clientset, config *rest.Config, piholePodName string, ingressIp string, hosts *hostsfile.ConcurrentHostsFile) {
 	api := clientset.ExtensionsV1beta1()
 	listOptions := metav1.ListOptions{}
 	watcher, err := api.Ingresses("").Watch(context.Background(), listOptions)
@@ -111,11 +116,19 @@ func ManageIngressChanges(clientset *kubernetes.Clientset, ingressIp string, hos
 			hosts.RemoveHostnames(objectId)
 		}
 
-		fmt.Println(hosts)
+		err := CopyFileToPod(clientset, config, piholePodName, "/etc/pihole/kube.list", hosts.String())
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		err = ExecInPod(clientset, config, piholePodName, []string{"pihole", "restartdns"})
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 
-func ManageServiceChanges(clientset *kubernetes.Clientset, searchDomain string, hosts *hostsfile.ConcurrentHostsFile) {
+func ManageServiceChanges(clientset *kubernetes.Clientset, config *rest.Config, piholePodName string, searchDomain string, hosts *hostsfile.ConcurrentHostsFile) {
 	api := clientset.CoreV1()
 	listOptions := metav1.ListOptions{}
 	watcher, err := api.Services("").Watch(context.Background(), listOptions)
@@ -151,6 +164,56 @@ func ManageServiceChanges(clientset *kubernetes.Clientset, searchDomain string, 
 			hosts.RemoveHostnames(objectId)
 		}
 
-		fmt.Println(hosts)
+		err := CopyFileToPod(clientset, config, piholePodName, "/etc/pihole/kube.list", hosts.String())
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		err = ExecInPod(clientset, config, piholePodName, []string{"pihole", "restartdns"})
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
+}
+
+func CopyFileToPod(clientset *kubernetes.Clientset, config *rest.Config, podName string, filepath string, contents string) error {
+	// There's certainly a more correct way of doing this, but that's a lot of
+	//   extra code.
+	script := fmt.Sprintf("cat <<EOF > %s\n%s\nEOF", filepath, contents)
+	return ExecInPod(clientset, config, podName, []string{"sh", "-c", script})
+}
+
+func ReloadPiholeInPod(clientset *kubernetes.Clientset, config *rest.Config, podName string) error {
+	return ExecInPod(clientset, config, podName, []string{"pihole", "restartdns"})
+}
+
+func ExecInPod(clientset *kubernetes.Clientset, config *rest.Config, podName string, command []string) error {
+	api := clientset.CoreV1()
+
+	execResource := api.RESTClient().Post().Resource("pods").Name(podName).
+		Namespace("default").SubResource("exec")
+
+	podExecOptions := &v1.PodExecOptions{
+		Command: command,
+		Stdin:   true,
+		Stdout:  true,
+		Stderr:  true,
+		TTY:     true,
+	}
+
+	execResource.VersionedParams(
+		podExecOptions,
+		scheme.ParameterCodec,
+	)
+
+	exec, err := remotecommand.NewSPDYExecutor(config, "POST", execResource.URL())
+	if err != nil {
+		return err
+	}
+
+	return exec.Stream(remotecommand.StreamOptions{
+		Stdin:  os.Stdin,
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
+	})
 }
