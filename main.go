@@ -4,6 +4,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 
 	cmd "github.com/Eagerod/hosts-file-daemon/cmd/hosts-file-daemon"
@@ -20,11 +21,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Try to pull a couple values out of the environment.
-	// If they're there, cool; if not, let downstream errors report it.
-	serverIp := os.Getenv("SERVER_IP")
-	sat := os.Getenv("SERVICE_ACCOUNT_TOKEN")
-	piholePodName := os.Getenv("PIHOLE_POD_NAME")
+	daemonConfig, err := cmd.NewDaemonConfigInCluster(*ip, *searchDomain)
+	if err != nil {
+		serverIp := os.Getenv("SERVER_IP")
+		sat := os.Getenv("SERVICE_ACCOUNT_TOKEN")
+		piholePodName := os.Getenv("PIHOLE_POD_NAME")
 
-	cmd.Run(serverIp, sat, *ip, piholePodName, *searchDomain)
+		daemonConfig, err = cmd.NewDaemonConfig(*ip, *searchDomain, serverIp, sat, piholePodName)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, err.Error())
+			os.Exit(2)
+		}
+	}
+
+	cmd.Run(daemonConfig)
 }
