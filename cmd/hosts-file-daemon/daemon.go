@@ -163,12 +163,18 @@ func ManageServiceChanges(daemonConfig *DaemonConfig, updatesChannel chan *strin
 }
 
 func WriteHostsFileAndRestartPihole(daemonConfig *DaemonConfig, hostsfile string) error {
-	err := CopyFileToPod(daemonConfig, "/etc/pihole/kube.list", hostsfile)
-	if err != nil {
+	log.Println("Updating kube.list in pod:", daemonConfig.PiholePodName)
+	if err := CopyFileToPod(daemonConfig, "/etc/pihole/kube.list", hostsfile); err != nil {
 		return err
 	}
 
-	return ExecInPod(daemonConfig, []string{"pihole", "restartdns"})
+	log.Println("Restarting DNS service in pod:", daemonConfig.PiholePodName)
+	if err := ExecInPod(daemonConfig, []string{"pihole", "restartdns"}); err != nil {
+		return err
+	}
+
+	log.Println("Successfully restarted DNS service in pod:", daemonConfig.PiholePodName)
+	return nil
 }
 
 func CopyFileToPod(daemonConfig *DaemonConfig, filepath string, contents string) error {
@@ -182,7 +188,7 @@ func ExecInPod(daemonConfig *DaemonConfig, command []string) error {
 	api := daemonConfig.KubernetesClientSet.CoreV1()
 
 	execResource := api.RESTClient().Post().Resource("pods").Name(daemonConfig.PiholePodName).
-		Namespace("default").SubResource("exec")
+		Namespace("default").SubResource("exec").Param("container", "pihole")
 
 	podExecOptions := &v1.PodExecOptions{
 		Command: command,
