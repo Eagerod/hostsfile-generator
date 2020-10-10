@@ -141,10 +141,6 @@ func CopyFileToPod(daemonConfig *DaemonConfig, filepath string, contents string)
 	return ExecInPod(daemonConfig, []string{"sh", "-c", script})
 }
 
-func ReloadPiholeInPod(daemonConfig *DaemonConfig) error {
-	return ExecInPod(daemonConfig, []string{"pihole", "restartdns"})
-}
-
 func ExecInPod(daemonConfig *DaemonConfig, command []string) error {
 	api := daemonConfig.KubernetesClientSet.CoreV1()
 
