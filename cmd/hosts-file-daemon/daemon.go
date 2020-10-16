@@ -1,7 +1,8 @@
 package cmd
 
 import (
-	"context"
+	// "context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -10,10 +11,15 @@ import (
 	"time"
 
 	"k8s.io/api/core/v1"
+	// extensionsv1beta1 "k8s.io/client-go/kubernetes/typed/networking/v1beta1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	// metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/informers"
+	// "k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/remotecommand"
+	"k8s.io/client-go/tools/cache"
 
 	"github.com/Eagerod/hosts-file-daemon/pkg/hostsfile"
 	"github.com/Eagerod/hosts-file-daemon/pkg/interrupt"
@@ -69,97 +75,165 @@ func Run(daemonConfig *DaemonConfig) {
 	interrupt.WaitForAnySignal(syscall.SIGINT, syscall.SIGTERM)
 }
 
+func GetNginxIngress(obj interface{}) (*extensionsv1beta1.Ingress, *string, error) {
+	ingress, ok := obj.(*extensionsv1beta1.Ingress)
+	if !ok {
+		return nil, nil, errors.New(fmt.Sprintf("Failed to get ingress from provided object."))
+	}
+
+	objectId := ingress.ObjectMeta.Namespace + "/" + ingress.ObjectMeta.Name
+
+	ingressClass, ok := ingress.Annotations["kubernetes.io/ingress.class"]
+	if !ok {
+		return nil, &objectId, errors.New(fmt.Sprintf("Skipping ingress (%s) because it doesn't have an ingress class\n", objectId))
+	}
+
+	if ingressClass != "nginx" {
+		return nil, &objectId, errors.New(fmt.Sprintf("Skipping ingress (%s) because it doesn't belong to NGINX Ingress Controller\n", objectId))
+	}
+
+	return ingress, &objectId, nil
+}
+
+func UpdateHostsFromIngress(hosts *hostsfile.ConcurrentHostsFile, ingress *extensionsv1beta1.Ingress, objectId string, ingressIp string) {
+	hostnames := []string{}
+	for _, rule := range ingress.Spec.Rules {
+		if strings.HasSuffix(rule.Host, ingressIp) {
+			hostnames = append(hostnames, rule.Host+".")
+		} else {
+			hostnames = append(hostnames, rule.Host)
+		}
+	}
+	hosts.SetHostnames(objectId, ingressIp, hostnames)
+}
+
 func ManageIngressChanges(daemonConfig *DaemonConfig, updatesChannel chan *string, hosts *hostsfile.ConcurrentHostsFile) {
-	api := daemonConfig.KubernetesClientSet.ExtensionsV1beta1()
-	listOptions := metav1.ListOptions{}
-	watcher, err := api.Ingresses("").Watch(context.Background(), listOptions)
+	// Resync every minute, just in case something somehow gets missed.
+	informerFactory := informers.NewSharedInformerFactory(daemonConfig.KubernetesClientSet, time.Minute)
 
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	ch := watcher.ResultChan()
-	log.Println("Starting to monitor ingresses in all namespaces.")
-
-	for event := range ch {
-		ingress, ok := event.Object.(*extensionsv1beta1.Ingress)
-		if !ok {
-			log.Fatal("unexpected type")
-		}
-
-		objectId := ingress.ObjectMeta.Namespace + "/" + ingress.ObjectMeta.Name
-
-		ingressClass, ok := ingress.Annotations["kubernetes.io/ingress.class"]
-		if !ok {
-			log.Printf("Skipping ingress (%s) because it doesn't have an ingress class\n", objectId)
-			continue
-		}
-
-		if ingressClass != "nginx" {
-			log.Printf("Skipping ingress (%s) because it doesn't belong to NGINX Ingress Controller\n", objectId)
-			continue
-		}
-
-		// For each host found, add a record to the hosts file.
-		// If this is an fqdn already, add it with a ., else add it as-is
-		if event.Type == "ADDED" || event.Type == "MODIFIED" {
-			hostnames := []string{}
-			for _, rule := range ingress.Spec.Rules {
-				if strings.HasSuffix(rule.Host, daemonConfig.IngressIp) {
-					hostnames = append(hostnames, rule.Host+".")
-				} else {
-					hostnames = append(hostnames, rule.Host)
+	ingressInformer := informerFactory.Extensions().V1beta1().Ingresses()
+	
+	ingressInformer.Informer().AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+            AddFunc: func(obj interface{}) {
+				ingress, objectId, err := GetNginxIngress(obj)
+				if err != nil {
+					log.Println(err.Error())
+					return
 				}
-			}
-			hosts.SetHostnames(objectId, daemonConfig.IngressIp, hostnames)
-		} else if event.Type == "DELETED" {
-			hosts.RemoveHostnames(objectId)
-		}
 
-		hostsFile := hosts.String()
-		updatesChannel <- &hostsFile
+				UpdateHostsFromIngress(hosts, ingress, *objectId, daemonConfig.IngressIp)
+				
+				hostsFile := hosts.String()
+				updatesChannel <- &hostsFile
+            },
+            DeleteFunc: func(obj interface{}) {
+				_, objectId, err := GetNginxIngress(obj)
+				if err != nil {
+					log.Println(err.Error())
+					return
+				}
+
+				hosts.RemoveHostnames(*objectId)
+				
+				hostsFile := hosts.String()
+				updatesChannel <- &hostsFile
+            },
+            UpdateFunc:func(oldObj, newObj interface{}) {
+				ingress, objectId, err := GetNginxIngress(newObj)
+				if err != nil {
+					log.Println(err.Error())
+					return
+				}
+
+				UpdateHostsFromIngress(hosts, ingress, *objectId, daemonConfig.IngressIp)
+
+				hostsFile := hosts.String()
+				updatesChannel <- &hostsFile
+            },
+        },
+	)
+		
+    stop := make(chan struct{})
+	informerFactory.Start(stop)
+	informerFactory.WaitForCacheSync(stop)
+}
+
+func GetLoadBalancerService(obj interface{}) (*v1.Service, *string, error) {
+	service, ok := obj.(*v1.Service)
+	if !ok {
+		return nil, nil, errors.New(fmt.Sprintf("Failed to get service from provided object."))
 	}
+
+	objectId := service.ObjectMeta.Namespace + "/" + service.ObjectMeta.Name
+
+	if service.Spec.Type != "LoadBalancer" {
+		return nil, &objectId, errors.New(fmt.Sprintf("Skipping service (%s) because it isn't of type LoadBalancer\n", objectId))
+	}
+
+	return service, &objectId, nil
+}
+
+func UpdateHostsFromService(hosts *hostsfile.ConcurrentHostsFile, service *v1.Service, objectId string, searchDomain string) {
+	// Serivces don't include the full search domain, so append it.
+	serviceName := service.ObjectMeta.Name
+	serviceIp := service.Spec.LoadBalancerIP
+
+	fqdn := serviceName + "." + searchDomain + "."
+	hosts.SetHostnames(objectId, serviceIp, []string{fqdn})
 }
 
 func ManageServiceChanges(daemonConfig *DaemonConfig, updatesChannel chan *string, hosts *hostsfile.ConcurrentHostsFile) {
-	api := daemonConfig.KubernetesClientSet.CoreV1()
-	listOptions := metav1.ListOptions{}
-	watcher, err := api.Services("").Watch(context.Background(), listOptions)
 
-	if err != nil {
-		log.Fatal(err)
-	}
+	// Resync every minute, just in case something somehow gets missed.
+	informerFactory := informers.NewSharedInformerFactory(daemonConfig.KubernetesClientSet, time.Minute)
 
-	ch := watcher.ResultChan()
-	log.Printf("Starting to monitor services in all namespaces.")
+	serviceInformer := informerFactory.Core().V1().Services()
+	
+	serviceInformer.Informer().AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			AddFunc: func(obj interface{}) {
+				service, objectId, err := GetLoadBalancerService(obj)
+				if err != nil {
+					log.Println(err.Error())
+					return
+				}
 
-	for event := range ch {
-		service, ok := event.Object.(*v1.Service)
-		if !ok {
-			log.Fatal("unexpected type")
-		}
+				UpdateHostsFromService(hosts, service, *objectId, daemonConfig.SearchDomain)
+				
+				hostsFile := hosts.String()
+				updatesChannel <- &hostsFile
+			},
+			DeleteFunc: func(obj interface{}) {
+				_, objectId, err := GetLoadBalancerService(obj)
+				if err != nil {
+					log.Println(err.Error())
+					return
+				}
 
-		objectId := service.ObjectMeta.Namespace + "/" + service.ObjectMeta.Name
+				hosts.RemoveHostnames(*objectId)
+				
+				hostsFile := hosts.String()
+				updatesChannel <- &hostsFile
+			},
+			UpdateFunc:func(oldObj, newObj interface{}) {
+				service, objectId, err := GetLoadBalancerService(newObj)
+				if err != nil {
+					log.Println(err.Error())
+					return
+				}
 
-		if service.Spec.Type != "LoadBalancer" {
-			log.Printf("Skipping service (%s) because it isn't of type LoadBalancer\n", objectId)
-			continue
-		}
+				UpdateHostsFromService(hosts, service, *objectId, daemonConfig.SearchDomain)
 
-		// Serivces don't include the full search domain, so append it.
-		serviceName := service.ObjectMeta.Name
-		serviceIp := service.Spec.LoadBalancerIP
-
-		fqdn := serviceName + "." + daemonConfig.SearchDomain + "."
-		if event.Type == "ADDED" || event.Type == "MODIFIED" {
-			hosts.SetHostnames(objectId, serviceIp, []string{fqdn})
-		} else if event.Type == "DELETED" {
-			hosts.RemoveHostnames(objectId)
-		}
-
-		hostsFile := hosts.String()
-		updatesChannel <- &hostsFile
-	}
+				hostsFile := hosts.String()
+				updatesChannel <- &hostsFile
+			},
+		},
+	)
+		
+	stop := make(chan struct{})
+	informerFactory.Start(stop)
+	informerFactory.WaitForCacheSync(stop)
 }
 
 func WriteHostsFileAndRestartPihole(daemonConfig *DaemonConfig, hostsfile string) error {
