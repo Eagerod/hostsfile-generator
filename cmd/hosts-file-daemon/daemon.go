@@ -11,12 +11,8 @@ import (
 	"time"
 
 	"k8s.io/api/core/v1"
-	// extensionsv1beta1 "k8s.io/client-go/kubernetes/typed/networking/v1beta1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
-
-	// metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
-	// "k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/client-go/tools/cache"
@@ -95,7 +91,7 @@ func GetNginxIngress(obj interface{}) (*extensionsv1beta1.Ingress, *string, erro
 	return ingress, &objectId, nil
 }
 
-func UpdateHostsFromIngress(hosts *hostsfile.ConcurrentHostsFile, ingress *extensionsv1beta1.Ingress, objectId string, ingressIp string) {
+func UpdateHostsFromIngress(hosts *hostsfile.ConcurrentHostsFile, ingress *extensionsv1beta1.Ingress, objectId string, ingressIp string) bool {
 	hostnames := []string{}
 	for _, rule := range ingress.Spec.Rules {
 		if strings.HasSuffix(rule.Host, ingressIp) {
@@ -104,7 +100,7 @@ func UpdateHostsFromIngress(hosts *hostsfile.ConcurrentHostsFile, ingress *exten
 			hostnames = append(hostnames, rule.Host)
 		}
 	}
-	hosts.SetHostnames(objectId, ingressIp, hostnames)
+	return hosts.SetHostnames(objectId, ingressIp, hostnames)
 }
 
 func ManageIngressChanges(daemonConfig *DaemonConfig, updatesChannel chan *string, hosts *hostsfile.ConcurrentHostsFile) {
@@ -118,38 +114,38 @@ func ManageIngressChanges(daemonConfig *DaemonConfig, updatesChannel chan *strin
             AddFunc: func(obj interface{}) {
 				ingress, objectId, err := GetNginxIngress(obj)
 				if err != nil {
-					log.Println(err.Error())
 					return
 				}
 
-				UpdateHostsFromIngress(hosts, ingress, *objectId, daemonConfig.IngressIp)
-				
-				hostsFile := hosts.String()
-				updatesChannel <- &hostsFile
+				if UpdateHostsFromIngress(hosts, ingress, *objectId, daemonConfig.IngressIp) {
+					log.Println("Updating hostsfile from discovered ingress", *objectId)
+					hostsfile := hosts.String()
+					updatesChannel <- &hostsfile
+				}
             },
             DeleteFunc: func(obj interface{}) {
 				_, objectId, err := GetNginxIngress(obj)
 				if err != nil {
-					log.Println(err.Error())
 					return
 				}
 
-				hosts.RemoveHostnames(*objectId)
-				
-				hostsFile := hosts.String()
-				updatesChannel <- &hostsFile
+				if hosts.RemoveHostnames(*objectId) {
+					log.Println("Updating hostsfile from removed ingress", *objectId)
+					hostsFile := hosts.String()
+					updatesChannel <- &hostsFile
+				}
             },
             UpdateFunc:func(oldObj, newObj interface{}) {
 				ingress, objectId, err := GetNginxIngress(newObj)
 				if err != nil {
-					log.Println(err.Error())
 					return
 				}
 
-				UpdateHostsFromIngress(hosts, ingress, *objectId, daemonConfig.IngressIp)
-
-				hostsFile := hosts.String()
-				updatesChannel <- &hostsFile
+				if UpdateHostsFromIngress(hosts, ingress, *objectId, daemonConfig.IngressIp) {
+					log.Println("Updating hostsfile from updated ingress", *objectId)
+					hostsFile := hosts.String()
+					updatesChannel <- &hostsFile
+				}
             },
         },
 	)
@@ -174,59 +170,58 @@ func GetLoadBalancerService(obj interface{}) (*v1.Service, *string, error) {
 	return service, &objectId, nil
 }
 
-func UpdateHostsFromService(hosts *hostsfile.ConcurrentHostsFile, service *v1.Service, objectId string, searchDomain string) {
+func UpdateHostsFromService(hosts *hostsfile.ConcurrentHostsFile, service *v1.Service, objectId string, searchDomain string) bool {
 	// Serivces don't include the full search domain, so append it.
 	serviceName := service.ObjectMeta.Name
 	serviceIp := service.Spec.LoadBalancerIP
 
 	fqdn := serviceName + "." + searchDomain + "."
-	hosts.SetHostnames(objectId, serviceIp, []string{fqdn})
+	return hosts.SetHostnames(objectId, serviceIp, []string{fqdn})
 }
 
 func ManageServiceChanges(daemonConfig *DaemonConfig, updatesChannel chan *string, hosts *hostsfile.ConcurrentHostsFile) {
-
 	// Resync every minute, just in case something somehow gets missed.
 	informerFactory := informers.NewSharedInformerFactory(daemonConfig.KubernetesClientSet, time.Minute)
 
 	serviceInformer := informerFactory.Core().V1().Services()
-	
+
 	serviceInformer.Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				service, objectId, err := GetLoadBalancerService(obj)
 				if err != nil {
-					log.Println(err.Error())
 					return
 				}
 
-				UpdateHostsFromService(hosts, service, *objectId, daemonConfig.SearchDomain)
-				
-				hostsFile := hosts.String()
-				updatesChannel <- &hostsFile
+				if UpdateHostsFromService(hosts, service, *objectId, daemonConfig.SearchDomain) {
+					log.Println("Updating hostsfile from discovered service", *objectId)
+					hostsfile := hosts.String()
+					updatesChannel <- &hostsfile
+				}
 			},
 			DeleteFunc: func(obj interface{}) {
 				_, objectId, err := GetLoadBalancerService(obj)
 				if err != nil {
-					log.Println(err.Error())
 					return
 				}
 
-				hosts.RemoveHostnames(*objectId)
-				
-				hostsFile := hosts.String()
-				updatesChannel <- &hostsFile
+				if hosts.RemoveHostnames(*objectId) {
+					log.Println("Updating hostsfile from removed service", *objectId)
+					hostsfile := hosts.String()
+					updatesChannel <- &hostsfile
+				}
 			},
 			UpdateFunc:func(oldObj, newObj interface{}) {
 				service, objectId, err := GetLoadBalancerService(newObj)
 				if err != nil {
-					log.Println(err.Error())
 					return
 				}
 
-				UpdateHostsFromService(hosts, service, *objectId, daemonConfig.SearchDomain)
-
-				hostsFile := hosts.String()
-				updatesChannel <- &hostsFile
+				if UpdateHostsFromService(hosts, service, *objectId, daemonConfig.SearchDomain) {
+					log.Println("Updating hostsfile from updated service", *objectId)
+					hostsfile := hosts.String()
+					updatesChannel <- &hostsfile
+				}
 			},
 		},
 	)
