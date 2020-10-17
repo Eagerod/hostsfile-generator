@@ -26,7 +26,7 @@ func (thisp *HostsEntry) Equals(otherp *HostsEntry) bool {
 	if len(this.hosts) != len(other.hosts) {
 		return false
 	}
-	
+
 	for i, entry := range this.hosts {
 		if entry != other.hosts[i] {
 			return false

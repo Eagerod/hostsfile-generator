@@ -13,8 +13,8 @@ import (
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/remotecommand"
 
 	"github.com/Eagerod/hosts-file-daemon/pkg/hostsfile"
 	"github.com/Eagerod/hosts-file-daemon/pkg/interrupt"
@@ -117,10 +117,10 @@ func ManageIngressChanges(daemonConfig *DaemonConfig, updatesChannel chan *strin
 	informerFactory := informers.NewSharedInformerFactory(daemonConfig.KubernetesClientSet, time.Minute)
 
 	ingressInformer := informerFactory.Extensions().V1beta1().Ingresses()
-	
+
 	ingressInformer.Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-            AddFunc: func(obj interface{}) {
+			AddFunc: func(obj interface{}) {
 				ingress, objectId, err := GetNginxIngress(obj)
 				if err != nil {
 					return
@@ -131,8 +131,8 @@ func ManageIngressChanges(daemonConfig *DaemonConfig, updatesChannel chan *strin
 					hostsfile := hosts.String()
 					updatesChannel <- &hostsfile
 				}
-            },
-            DeleteFunc: func(obj interface{}) {
+			},
+			DeleteFunc: func(obj interface{}) {
 				_, objectId, err := GetNginxIngress(obj)
 				if err != nil {
 					return
@@ -143,8 +143,8 @@ func ManageIngressChanges(daemonConfig *DaemonConfig, updatesChannel chan *strin
 					hostsFile := hosts.String()
 					updatesChannel <- &hostsFile
 				}
-            },
-            UpdateFunc:func(oldObj, newObj interface{}) {
+			},
+			UpdateFunc: func(oldObj, newObj interface{}) {
 				ingress, objectId, err := GetNginxIngress(newObj)
 				if err != nil {
 					return
@@ -155,11 +155,11 @@ func ManageIngressChanges(daemonConfig *DaemonConfig, updatesChannel chan *strin
 					hostsFile := hosts.String()
 					updatesChannel <- &hostsFile
 				}
-            },
-        },
+			},
+		},
 	)
-		
-    stop := make(chan struct{})
+
+	stop := make(chan struct{})
 	informerFactory.Start(stop)
 	informerFactory.WaitForCacheSync(stop)
 }
@@ -220,7 +220,7 @@ func ManageServiceChanges(daemonConfig *DaemonConfig, updatesChannel chan *strin
 					updatesChannel <- &hostsfile
 				}
 			},
-			UpdateFunc:func(oldObj, newObj interface{}) {
+			UpdateFunc: func(oldObj, newObj interface{}) {
 				service, objectId, err := GetLoadBalancerService(newObj)
 				if err != nil {
 					return
@@ -234,7 +234,7 @@ func ManageServiceChanges(daemonConfig *DaemonConfig, updatesChannel chan *strin
 			},
 		},
 	)
-		
+
 	stop := make(chan struct{})
 	informerFactory.Start(stop)
 	informerFactory.WaitForCacheSync(stop)
