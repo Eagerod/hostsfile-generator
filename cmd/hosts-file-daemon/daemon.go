@@ -70,11 +70,8 @@ func Run(daemonConfig *DaemonConfig) {
 	go func() {
 		time.Sleep(time.Second * 60)
 		log.Println("Forcing update of hostsfile to ensure initial launch configurations persist")
-		hostfileContents := hostsFile.String()
-		err := WriteHostsFileAndRestartPihole(daemonConfig, hostfileContents)
-		if err != nil {
-			log.Fatal(err)
-		}
+		hostsfile := hostsFile.String()
+		updatesChannel <- &hostsfile
 	}()
 
 	interrupt.WaitForAnySignal(syscall.SIGINT, syscall.SIGTERM)
