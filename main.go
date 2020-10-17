@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"time"
 
 	cmd "github.com/Eagerod/hosts-file-daemon/cmd/hosts-file-daemon"
 )
@@ -40,9 +39,6 @@ func main() {
 			os.Exit(2)
 		}
 	}
-
-	fmt.Fprintf(os.Stderr, "Waiting 60 seconds to allow pihole to start before monitoring resources...\n")
-	time.Sleep(time.Second * 60)
 
 	cmd.Run(daemonConfig)
 }

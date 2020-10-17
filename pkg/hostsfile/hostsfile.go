@@ -11,8 +11,29 @@ type HostsEntry struct {
 	hosts []string
 }
 
-func (he HostsEntry) String() string {
+func (he *HostsEntry) String() string {
 	return fmt.Sprintf(strings.Join(append([]string{he.ip}, he.hosts...), "\t"))
+}
+
+func (thisp *HostsEntry) Equals(otherp *HostsEntry) bool {
+	this := *thisp
+	other := *otherp
+
+	if this.ip != other.ip {
+		return false
+	}
+
+	if len(this.hosts) != len(other.hosts) {
+		return false
+	}
+
+	for i, entry := range this.hosts {
+		if entry != other.hosts[i] {
+			return false
+		}
+	}
+
+	return true
 }
 
 type ConcurrentHostsFile struct {
@@ -26,19 +47,37 @@ func NewConcurrentHostsFile() *ConcurrentHostsFile {
 	return &chf
 }
 
-func (chfptr *ConcurrentHostsFile) SetHostnames(objectId string, ip string, hostnames []string) {
-	chf := *chfptr
-	chf.lock.Lock()
-	he := HostsEntry{ip, hostnames}
-	chf.entries[objectId] = &he
-	chf.lock.Unlock()
+func (chfptr *ConcurrentHostsFile) Lock() {
+	(*chfptr).lock.Lock()
 }
 
-func (chfptr *ConcurrentHostsFile) RemoveHostnames(objectId string) {
+func (chfptr *ConcurrentHostsFile) Unlock() {
+	(*chfptr).lock.Unlock()
+}
+
+func (chfptr *ConcurrentHostsFile) SetHostnames(objectId string, ip string, hostnames []string) bool {
 	chf := *chfptr
-	chf.lock.Lock()
-	delete(chf.entries, objectId)
-	chf.lock.Unlock()
+	updated := false
+	chfptr.Lock()
+	he := HostsEntry{ip, hostnames}
+	if existing, ok := chf.entries[objectId]; !ok || !existing.Equals(&he) {
+		updated = true
+		chf.entries[objectId] = &he
+	}
+	chfptr.Unlock()
+	return updated
+}
+
+func (chfptr *ConcurrentHostsFile) RemoveHostnames(objectId string) bool {
+	chf := *chfptr
+	updated := false
+	chfptr.Lock()
+	if _, ok := chf.entries[objectId]; ok {
+		updated = true
+		delete(chf.entries, objectId)
+	}
+	chfptr.Unlock()
+	return updated
 }
 
 func (chfptr *ConcurrentHostsFile) String() string {
