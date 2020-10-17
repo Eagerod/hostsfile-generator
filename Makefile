@@ -94,3 +94,11 @@ fmt:
 .PHONY: clean
 clean:
 	rm -rf coverage.out $(BUILD_DIR)
+
+.PHONY: container
+container: $(BIN_NAME)
+	@version="v$$(cat VERSION)" && \
+	build="$$(if [ "$$(git describe)" != "$$version" ]; then echo "-$$(git rev-parse --short HEAD)"; fi)" && \
+	dirty="$$(if [ ! -z "$$(git diff)" ]; then echo "-dirty"; fi)" && \
+	d_tag="$$(printf "%s%s" $$(cat VERSION) $$dirty)" && \
+	docker build . -t "registry.internal.aleemhaji.com/hostsfile-daemon:$$(echo $$d_tag)"
