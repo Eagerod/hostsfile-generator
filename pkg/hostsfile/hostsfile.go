@@ -39,7 +39,6 @@ func (thisp *HostsEntry) Equals(otherp *HostsEntry) bool {
 type ConcurrentHostsFile struct {
 	lock    *sync.RWMutex
 	entries map[string]*HostsEntry
-	dirty   bool
 }
 
 func NewConcurrentHostsFile() *ConcurrentHostsFile {
