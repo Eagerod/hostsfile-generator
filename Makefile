@@ -91,6 +91,12 @@ fmt:
 	@$(GO) fmt $(CMD_PACKAGE_DIR)
 	@$(GO) fmt $(PKG_PACKAGE_DIR)
 
+.PHONY: fmt-check
+fmt-check:
+	@if [ ! -z "$$($(MAKE) -s fmt)" ]; then \
+		exit 1; \
+	fi
+
 .PHONY: clean
 clean:
 	rm -rf coverage.out $(BUILD_DIR)
