@@ -43,7 +43,7 @@ type ConcurrentHostsFile struct {
 
 func NewConcurrentHostsFile() *ConcurrentHostsFile {
 	mutex := sync.RWMutex{}
-	chf := ConcurrentHostsFile{&mutex, map[string]*HostsEntry{}, false}
+	chf := ConcurrentHostsFile{&mutex, map[string]*HostsEntry{}}
 	return &chf
 }
 
