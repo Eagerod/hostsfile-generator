@@ -21,5 +21,8 @@ jobs:
     - name: Make
       run: make
 
+    - name: Lint
+      run: make fmt-check
+
     - name: Test
       run: make test
