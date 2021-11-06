@@ -16,8 +16,8 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/remotecommand"
 
-	"github.com/Eagerod/hosts-file-daemon/pkg/hostsfile"
-	"github.com/Eagerod/hosts-file-daemon/pkg/interrupt"
+	"github.com/Eagerod/hostsfile-generator/pkg/hostsfile"
+	"github.com/Eagerod/hostsfile-generator/pkg/interrupt"
 )
 
 func Run(daemonConfig *DaemonConfig) {

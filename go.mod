@@ -1,4 +1,4 @@
-module github.com/Eagerod/hosts-file-daemon
+module github.com/Eagerod/hostsfile-generator
 
 go 1.13
 

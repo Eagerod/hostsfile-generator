@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	cmd "github.com/Eagerod/hosts-file-daemon/cmd/hosts-file-daemon"
+	cmd "github.com/Eagerod/hostsfile-generator/cmd/hostsfile-generator"
 )
 
 func main() {

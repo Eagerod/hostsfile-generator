@@ -7,7 +7,7 @@ EXECUTABLE := hostsfile-daemon
 BIN_NAME := $(BUILD_DIR)/$(EXECUTABLE)
 INSTALLED_NAME := /usr/local/bin/$(EXECUTABLE)
 
-CMD_PACKAGE_DIR := ./cmd/hosts-file-daemon
+CMD_PACKAGE_DIR := ./cmd/hostsfile-generator
 PKG_PACKAGE_DIR := ./pkg/*
 PACKAGE_PATHS := $(CMD_PACKAGE_DIR) $(PKG_PACKAGE_DIR)
 
