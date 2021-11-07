@@ -1,9 +1,7 @@
 package hostsfile
 
 import (
-// 	"fmt"
-// 	"strings"
-// 	"sync"
+	"strings"
 	"testing"
 )
 
@@ -11,30 +9,47 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestHostsEntryString(t *testing.T) {
-	var tests = []struct {
-		name string
-		ip  string
-		hosts  []string
-		rv  string
-	}{
-		{"One Domain", "192.168.1.2", []string{"google.com"}, "192.168.1.2	google.com"},
-		{"Multiple Domains", "192.168.1.2", []string{"google.com", "www.google.com"}, "192.168.1.2	google.com	www.google.com"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			he := HostsEntry{tt.ip, tt.hosts}
-			assert.Equal(t, he.String(), tt.rv)
-		})
-	}
+func TestHostsFileSetHostsEntry(t *testing.T) {
+	hf := NewHostsFile()
+
+	he1 := HostsEntry{"192.168.1.2", []string{"google.com"}}
+	he2 := HostsEntry{"192.168.1.2", []string{"google.com", "www.google.com"}}
+
+	assert.True(t, hf.SetHostsEntry("abc", he1))
+	assert.False(t, hf.SetHostsEntry("abc", he1))
+	assert.True(t, hf.SetHostsEntry("xyz", he1))
+	assert.True(t, hf.SetHostsEntry("abc", he2))
 }
 
-func TestHostsEntryEqual(t *testing.T) {
-	h1 := HostsEntry{"192.168.1.2", []string{"google.com"}}
-	h2 := HostsEntry{"192.168.1.2", []string{"google.com"}}
-	h3 := HostsEntry{"192.168.1.2", []string{"google.com", "www.google.com"}}
+func TestHostsFileRemoveHostsEntry(t *testing.T) {
+	hf := NewHostsFile()
 
-	assert.True(t, h1.Equals(&h1))
-	assert.True(t, h1.Equals(&h2))
-	assert.False(t, h1.Equals(&h3))
+	he1 := HostsEntry{"192.168.1.2", []string{"google.com"}}
+	he2 := HostsEntry{"192.168.1.2", []string{"google.com", "www.google.com"}}
+
+	hf.SetHostsEntry("abc", he1)
+	hf.SetHostsEntry("xyz", he2)
+
+	assert.False(t, hf.RemoveHostsEntry("123"))
+	assert.True(t, hf.RemoveHostsEntry("abc"))
+	assert.False(t, hf.RemoveHostsEntry("abc"))
+
+	_, ok := hf.entries["xyz"]
+	assert.True(t, ok)
+}
+
+func TestHostsFileString(t *testing.T) {
+	hf := NewHostsFile()
+
+	he1 := HostsEntry{"192.168.1.2", []string{"google.com"}}
+	he2 := HostsEntry{"192.168.1.2", []string{"google.com", "www.google.com"}}
+
+	hf.SetHostsEntry("abc", he1)
+
+	assert.True(t, strings.Contains(hf.String(), he1.String()))
+
+	hf.SetHostsEntry("xyz", he2)
+
+	assert.True(t, strings.Contains(hf.String(), he1.String()))
+	assert.True(t, strings.Contains(hf.String(), he2.String()))
 }
