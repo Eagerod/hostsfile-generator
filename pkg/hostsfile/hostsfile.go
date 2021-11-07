@@ -1,7 +1,6 @@
 package hostsfile
 
 import (
-	"fmt"
 	"strings"
 	"sync"
 )
@@ -12,7 +11,7 @@ type HostsEntry struct {
 }
 
 func (he *HostsEntry) String() string {
-	return fmt.Sprintf(strings.Join(append([]string{he.ip}, he.hosts...), "\t"))
+	return strings.Join(append([]string{he.ip}, he.hosts...), "\t")
 }
 
 func (thisp *HostsEntry) Equals(otherp *HostsEntry) bool {
