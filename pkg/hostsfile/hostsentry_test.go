@@ -1,15 +1,18 @@
 package hostsfile
 
 import (
-// 	"fmt"
-// 	"strings"
-// 	"sync"
 	"testing"
 )
 
 import (
 	"github.com/stretchr/testify/assert"
 )
+
+func TestNewHostsEntry(t *testing.T) {
+	he := NewHostsEntry("192.168.1.2", []string{"google.com"})
+	assert.Equal(t, he.ip, "192.168.1.2")
+	assert.Equal(t, he.hosts, []string{"google.com"})
+}
 
 func TestHostsEntryString(t *testing.T) {
 	var tests = []struct {
