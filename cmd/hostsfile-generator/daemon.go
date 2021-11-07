@@ -106,7 +106,9 @@ func UpdateHostsFromIngress(hosts *hostsfile.ConcurrentHostsFile, ingress *exten
 			hostnames = append(hostnames, rule.Host)
 		}
 	}
-	return hosts.SetHostnames(objectId, ingressIp, hostnames)
+
+	he := hostsfile.NewHostsEntry(ingressIp, hostnames)
+	return hosts.SetHostsEntry(objectId, *he)
 }
 
 func ManageIngressChanges(daemonConfig *DaemonConfig, updatesChannel chan *string, hosts *hostsfile.ConcurrentHostsFile) {
@@ -135,7 +137,7 @@ func ManageIngressChanges(daemonConfig *DaemonConfig, updatesChannel chan *strin
 					return
 				}
 
-				if hosts.RemoveHostnames(*objectId) {
+				if hosts.RemoveHostsEntry(*objectId) {
 					log.Println("Updating hostsfile from removed ingress", *objectId)
 					hostsFile := hosts.String()
 					updatesChannel <- &hostsFile
@@ -182,7 +184,8 @@ func UpdateHostsFromService(hosts *hostsfile.ConcurrentHostsFile, service *v1.Se
 	serviceIp := service.Spec.LoadBalancerIP
 
 	fqdn := serviceName + "." + searchDomain + "."
-	return hosts.SetHostnames(objectId, serviceIp, []string{fqdn})
+	he := hostsfile.NewHostsEntry(serviceIp, []string{fqdn})
+	return hosts.SetHostsEntry(objectId, *he)
 }
 
 func ManageServiceChanges(daemonConfig *DaemonConfig, updatesChannel chan *string, hosts *hostsfile.ConcurrentHostsFile) {
@@ -211,7 +214,7 @@ func ManageServiceChanges(daemonConfig *DaemonConfig, updatesChannel chan *strin
 					return
 				}
 
-				if hosts.RemoveHostnames(*objectId) {
+				if hosts.RemoveHostsEntry(*objectId) {
 					log.Println("Updating hostsfile from removed service", *objectId)
 					hostsfile := hosts.String()
 					updatesChannel <- &hostsfile

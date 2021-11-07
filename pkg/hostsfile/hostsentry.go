@@ -9,6 +9,11 @@ type HostsEntry struct {
 	hosts []string
 }
 
+func NewHostsEntry(ip string, hosts []string) *HostsEntry {
+	he := HostsEntry{ip, hosts}
+	return &he
+}
+
 func (he *HostsEntry) String() string {
 	return strings.Join(append([]string{he.ip}, he.hosts...), "\t")
 }

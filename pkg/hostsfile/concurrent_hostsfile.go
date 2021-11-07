@@ -1,62 +1,45 @@
 package hostsfile
 
 import (
-	"strings"
 	"sync"
 )
 
 type ConcurrentHostsFile struct {
 	lock    *sync.RWMutex
-	entries map[string]*HostsEntry
+	hf 		*HostsFile
 }
 
 func NewConcurrentHostsFile() *ConcurrentHostsFile {
 	mutex := sync.RWMutex{}
-	chf := ConcurrentHostsFile{&mutex, map[string]*HostsEntry{}}
+	chf := ConcurrentHostsFile{&mutex, NewHostsFile()}
 	return &chf
 }
 
 func (chfptr *ConcurrentHostsFile) Lock() {
-	(*chfptr).lock.Lock()
+	chfptr.lock.Lock()
 }
 
 func (chfptr *ConcurrentHostsFile) Unlock() {
-	(*chfptr).lock.Unlock()
+	chfptr.lock.Unlock()
 }
 
-func (chfptr *ConcurrentHostsFile) SetHostnames(objectId string, ip string, hostnames []string) bool {
-	chf := *chfptr
-	updated := false
+func (chfptr *ConcurrentHostsFile) SetHostsEntry(objectId string, he HostsEntry) bool {
 	chfptr.Lock()
-	he := HostsEntry{ip, hostnames}
-	if existing, ok := chf.entries[objectId]; !ok || !existing.Equals(&he) {
-		updated = true
-		chf.entries[objectId] = &he
-	}
+	rv := chfptr.hf.SetHostsEntry(objectId, he)
 	chfptr.Unlock()
-	return updated
+	return rv
 }
 
-func (chfptr *ConcurrentHostsFile) RemoveHostnames(objectId string) bool {
-	chf := *chfptr
-	updated := false
+func (chfptr *ConcurrentHostsFile) RemoveHostsEntry(objectId string) bool {
 	chfptr.Lock()
-	if _, ok := chf.entries[objectId]; ok {
-		updated = true
-		delete(chf.entries, objectId)
-	}
+	rv := chfptr.hf.RemoveHostsEntry(objectId)
 	chfptr.Unlock()
-	return updated
+	return rv
 }
 
 func (chfptr *ConcurrentHostsFile) String() string {
-	chf := *chfptr
-	chf.lock.RLock()
-	var sb strings.Builder
-	for _, hostEntry := range chf.entries {
-		sb.WriteString(hostEntry.String())
-		sb.WriteString("\n")
-	}
-	chf.lock.RUnlock()
-	return sb.String()
+	chfptr.lock.RLock()
+	rv := chfptr.hf.String()
+	chfptr.lock.RUnlock()
+	return rv
 }
