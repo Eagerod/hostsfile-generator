@@ -28,3 +28,13 @@ func TestHostsEntryString(t *testing.T) {
 		})
 	}
 }
+
+func TestHostsEntryEqual(t *testing.T) {
+	h1 := HostsEntry{"192.168.1.2", []string{"google.com"}}
+	h2 := HostsEntry{"192.168.1.2", []string{"google.com"}}
+	h3 := HostsEntry{"192.168.1.2", []string{"google.com", "www.google.com"}}
+
+	assert.True(t, h1.Equals(&h1))
+	assert.True(t, h1.Equals(&h2))
+	assert.False(t, h1.Equals(&h3))
+}
