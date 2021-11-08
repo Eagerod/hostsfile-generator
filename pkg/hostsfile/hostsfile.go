@@ -12,7 +12,7 @@ type IHostsFile interface {
 }
 
 type HostsFile struct {
-	entries    map[string]*HostsEntry
+	entries map[string]*HostsEntry
 }
 
 func NewHostsFile() *HostsFile {

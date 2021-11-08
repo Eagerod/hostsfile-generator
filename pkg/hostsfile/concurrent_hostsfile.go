@@ -5,8 +5,8 @@ import (
 )
 
 type ConcurrentHostsFile struct {
-	lock    *sync.RWMutex
-	hf 		*HostsFile
+	lock *sync.RWMutex
+	hf   *HostsFile
 }
 
 func NewConcurrentHostsFile() *ConcurrentHostsFile {
