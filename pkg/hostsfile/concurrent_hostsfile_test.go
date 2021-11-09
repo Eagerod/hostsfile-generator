@@ -9,8 +9,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestHostsFileSetHostsEntry(t *testing.T) {
-	hf := NewHostsFile()
+// This file is basically a copy paste of `hostsfile_tests`.
+// Not sure if there's a more sensible technique of testing things that should
+//   have the same interface + behaviour?
+func TestConcurrentHostsFileSetHostnames(t *testing.T) {
+	hf := NewConcurrentHostsFile()
 
 	he1 := HostsEntry{"192.168.1.2", []string{"google.com"}}
 	he2 := HostsEntry{"192.168.1.2", []string{"google.com", "www.google.com"}}
@@ -21,8 +24,8 @@ func TestHostsFileSetHostsEntry(t *testing.T) {
 	assert.True(t, hf.SetHostsEntry("abc", he2))
 }
 
-func TestHostsFileRemoveHostsEntry(t *testing.T) {
-	hf := NewHostsFile()
+func TestConcurrentHostsFileRemoveHostnames(t *testing.T) {
+	hf := NewConcurrentHostsFile()
 
 	he1 := HostsEntry{"192.168.1.2", []string{"google.com"}}
 	he2 := HostsEntry{"192.168.1.2", []string{"google.com", "www.google.com"}}
@@ -34,12 +37,12 @@ func TestHostsFileRemoveHostsEntry(t *testing.T) {
 	assert.True(t, hf.RemoveHostsEntry("abc"))
 	assert.False(t, hf.RemoveHostsEntry("abc"))
 
-	_, ok := hf.entries["xyz"]
+	_, ok := hf.hf.entries["xyz"]
 	assert.True(t, ok)
 }
 
-func TestHostsFileString(t *testing.T) {
-	hf := NewHostsFile()
+func TestConcurrentHostsFileString(t *testing.T) {
+	hf := NewConcurrentHostsFile()
 
 	he1 := HostsEntry{"192.168.1.2", []string{"google.com"}}
 	he2 := HostsEntry{"192.168.1.2", []string{"google.com", "www.google.com"}}
