@@ -47,53 +47,11 @@ func (hfd *HostsFileDaemon) Run() {
 	updatesChannel := make(chan bool, 100)
 	defer close(updatesChannel)
 
-	go func() {
-		lastUpdate := time.Now()
-		for _ = range updatesChannel {
-			// Check the length of the channel before doing anything.
-			// If there are more items in it, just let the next iteration
-			//    handle the update.
-			if len(updatesChannel) >= 1 {
-				continue
-			}
+	go hfd.performUpdates(updatesChannel)
+	go hfd.Monitor(updatesChannel, &DaemonIngressMonitor{hfd.hostsfile, hfd.config.IngressIp})
+	go hfd.Monitor(updatesChannel, &DaemonServiceMonitor{hfd.hostsfile, hfd.config.SearchDomain})
 
-			hostsfile := hfd.hostsfile.String()
-			// If the last update was more than 60 seconds ago, write this one
-			//   immediately
-			if time.Now().Sub(lastUpdate).Minutes() >= 1 {
-				log.Println("Last update was more than 1 minute ago. Updating immediately.")
-				err := WriteHostsFileAndRestartPihole(&hfd.config, hostsfile)
-				if err != nil {
-					log.Fatal(err)
-				}
-				lastUpdate = time.Now()
-				continue
-			}
-
-			// Wait 3 seconds.
-			log.Println("Waiting 1 seconds before attempting hostsfile update.")
-			time.Sleep(time.Second * 1)
-			if len(updatesChannel) >= 1 {
-				log.Println("Aborting hostsfile update. Newer hostsfile is pending.")
-				continue
-			}
-
-			err := WriteHostsFileAndRestartPihole(&hfd.config, hostsfile)
-			if err != nil {
-				log.Fatal(err)
-			}
-			lastUpdate = time.Now()
-		}
-	}()
-
-	go hfd.Monitor(updatesChannel, &DaemonIngressMonitor{hfd})
-	go hfd.Monitor(updatesChannel, &DaemonServiceMonitor{hfd})
-
-	go func() {
-		time.Sleep(time.Second * 60)
-		log.Println("Forcing update of hostsfile to ensure initial launch configurations persist")
-		updatesChannel <- true
-	}()
+	go updateAfterInterval(updatesChannel, time.Second*60)
 
 	interrupt.WaitForAnySignal(syscall.SIGINT, syscall.SIGTERM)
 }
@@ -194,4 +152,49 @@ func (hfd *HostsFileDaemon) Monitor(c chan<- bool, drm DaemonResourceMonitor) {
 	stop := make(chan struct{})
 	informerFactory.Start(stop)
 	informerFactory.WaitForCacheSync(stop)
+}
+
+func (hfd *HostsFileDaemon) performUpdates(updatesChannel <-chan bool) {
+	lastUpdate := time.Now()
+	for _ = range updatesChannel {
+		// Check the length of the channel before doing anything.
+		// If there are more items in it, just let the next iteration
+		//    handle the update.
+		if len(updatesChannel) >= 1 {
+			continue
+		}
+
+		hostsfile := hfd.hostsfile.String()
+		// If the last update was more than 60 seconds ago, write this one
+		//   immediately
+		if time.Now().Sub(lastUpdate).Minutes() >= 1 {
+			log.Println("Last update was more than 1 minute ago. Updating immediately.")
+			err := WriteHostsFileAndRestartPihole(&hfd.config, hostsfile)
+			if err != nil {
+				log.Fatal(err)
+			}
+			lastUpdate = time.Now()
+			continue
+		}
+
+		// Wait 3 seconds.
+		log.Println("Waiting 1 seconds before attempting hostsfile update.")
+		time.Sleep(time.Second * 1)
+		if len(updatesChannel) >= 1 {
+			log.Println("Aborting hostsfile update. Newer hostsfile is pending.")
+			continue
+		}
+
+		err := WriteHostsFileAndRestartPihole(&hfd.config, hostsfile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		lastUpdate = time.Now()
+	}
+}
+
+func updateAfterInterval(c chan<- bool, delay time.Duration) {
+	time.Sleep(delay)
+	log.Println("Forcing update to ensure consistency")
+	c <- true
 }

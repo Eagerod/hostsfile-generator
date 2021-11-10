@@ -13,7 +13,8 @@ import (
 )
 
 type DaemonServiceMonitor struct {
-	hfd *HostsFileDaemon
+	hostsfile    hostsfile.IHostsFile
+	searchDomain string
 }
 
 func (d *DaemonServiceMonitor) Informer(sif informers.SharedInformerFactory) cache.SharedInformer {
@@ -55,7 +56,7 @@ func (d *DaemonServiceMonitor) HandleDeletedResource(objectId string, obj interf
 		return false
 	}
 
-	if d.hfd.hostsfile.RemoveHostsEntry(objectId) {
+	if d.hostsfile.RemoveHostsEntry(objectId) {
 		log.Println("Updating hostsfile from removed service", objectId)
 		return true
 	}
@@ -78,7 +79,7 @@ func (d *DaemonServiceMonitor) HandleUpdatedResource(objectId string, obj interf
 }
 
 func (d *DaemonServiceMonitor) setHostsEntry(objectId string, service *v1.Service) bool {
-	fqdn := fmt.Sprintf("%s.%s.", service.ObjectMeta.Name, d.hfd.config.SearchDomain)
+	fqdn := fmt.Sprintf("%s.%s.", service.ObjectMeta.Name, d.searchDomain)
 	he := hostsfile.NewHostsEntry(service.Spec.LoadBalancerIP, []string{fqdn})
-	return d.hfd.hostsfile.SetHostsEntry(objectId, *he)
+	return d.hostsfile.SetHostsEntry(objectId, *he)
 }

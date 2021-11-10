@@ -14,7 +14,8 @@ import (
 )
 
 type DaemonIngressMonitor struct {
-	hfd *HostsFileDaemon
+	hostsfile hostsfile.IHostsFile
+	ingressIp string
 }
 
 func (d *DaemonIngressMonitor) Informer(sif informers.SharedInformerFactory) cache.SharedInformer {
@@ -61,7 +62,7 @@ func (d *DaemonIngressMonitor) HandleDeletedResource(objectId string, obj interf
 		return false
 	}
 
-	if d.hfd.hostsfile.RemoveHostsEntry(objectId) {
+	if d.hostsfile.RemoveHostsEntry(objectId) {
 		log.Println("Updating hostsfile from removed ingress", objectId)
 		return true
 	}
@@ -87,13 +88,13 @@ func (d *DaemonIngressMonitor) setHostsEntry(objectId string, ingress *extension
 	hostnames := []string{}
 
 	for _, rule := range ingress.Spec.Rules {
-		if strings.HasSuffix(rule.Host, d.hfd.config.IngressIp) {
+		if strings.HasSuffix(rule.Host, d.ingressIp) {
 			hostnames = append(hostnames, rule.Host+".")
 		} else {
 			hostnames = append(hostnames, rule.Host)
 		}
 	}
 
-	he := hostsfile.NewHostsEntry(d.hfd.config.IngressIp, hostnames)
-	return d.hfd.hostsfile.SetHostsEntry(objectId, *he)
+	he := hostsfile.NewHostsEntry(d.ingressIp, hostnames)
+	return d.hostsfile.SetHostsEntry(objectId, *he)
 }
