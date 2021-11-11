@@ -12,7 +12,6 @@ import (
 )
 
 type DaemonServiceMonitor struct {
-	hostsfile    hostsfile.IHostsFile
 	searchDomain string
 }
 
@@ -33,7 +32,7 @@ func (d *DaemonServiceMonitor) ValidateResource(obj interface{}) (string, error)
 	objectId := fmt.Sprintf("%s/%s", service.ObjectMeta.Namespace, service.ObjectMeta.Name)
 
 	if service.Spec.Type != "LoadBalancer" {
-		return objectId, errors.New(fmt.Sprintf("Skipping service (%s) because it isn't of type LoadBalancer\n", objectId))
+		return objectId, fmt.Errorf("Skipping service (%s) because it isn't of type LoadBalancer.", objectId)
 	}
 
 	return objectId, nil

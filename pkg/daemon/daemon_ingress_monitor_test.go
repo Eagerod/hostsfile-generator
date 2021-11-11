@@ -1,7 +1,6 @@
 package daemon
 
 import (
-	// "strings"
 	"testing"
 )
 
@@ -28,20 +27,9 @@ func validTestIngress() *extensionsv1beta1.Ingress {
 		},
 	}
 
-	// for _, rule := range ingress.Spec.Rules {
-	// 	if strings.HasSuffix(rule.Host, d.ingressIp) {
-	// 		hostnames = append(hostnames, rule.Host+".")
-	// 	} else {
-	// 		hostnames = append(hostnames, rule.Host)
-	// 	}
-	// }
-
 	return &ingress
 }
 
-// This file is basically a copy paste of `hostsfile_tests`.
-// Not sure if there's a more sensible technique of testing things that should
-//   have the same interface + behaviour?
 func TestDaemonIngressMonitorName(t *testing.T) {
 	drm := DaemonIngressMonitor{}
 
