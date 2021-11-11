@@ -17,8 +17,9 @@ import (
 	"github.com/Eagerod/hostsfile-generator/pkg/interrupt"
 )
 
-// Basically a container for informers
 type DaemonResourceMonitor interface {
+	Name() string
+
 	Informer(sif informers.SharedInformerFactory) cache.SharedInformer
 
 	ValidateResource(obj interface{}) (string, error)
@@ -48,7 +49,6 @@ func (hfd *HostsFileDaemon) Run() {
 	go hfd.performUpdates(updatesChannel)
 	go hfd.Monitor(updatesChannel, &DaemonIngressMonitor{hfd.hostsfile, hfd.config.IngressIp})
 	go hfd.Monitor(updatesChannel, &DaemonServiceMonitor{hfd.hostsfile, hfd.config.SearchDomain})
-
 	go updateAfterInterval(updatesChannel, time.Second*60)
 
 	interrupt.WaitForAnySignal(syscall.SIGINT, syscall.SIGTERM)
@@ -121,6 +121,7 @@ func (hfd *HostsFileDaemon) Monitor(c chan<- bool, drm DaemonResourceMonitor) {
 				}
 
 				if hfd.hostsfile.SetHostsEntry(objectId, drm.GetResourceHostsEntry(obj)) {
+					log.Printf("Creating entry for %s: %s\n", drm.Name(), objectId)
 					c <- true
 				}
 			},
@@ -131,6 +132,7 @@ func (hfd *HostsFileDaemon) Monitor(c chan<- bool, drm DaemonResourceMonitor) {
 				}
 
 				if hfd.hostsfile.RemoveHostsEntry(objectId) {
+					log.Printf("Remove entry for %s: %s\n", drm.Name(), objectId)
 					c <- true
 				}
 			},
@@ -138,12 +140,14 @@ func (hfd *HostsFileDaemon) Monitor(c chan<- bool, drm DaemonResourceMonitor) {
 				objectId, err := drm.ValidateResource(newObj)
 				if err != nil {
 					if objectId != "" &&  hfd.hostsfile.RemoveHostsEntry(objectId) {
+						log.Printf("Removing outdated entry %s: %s\n", drm.Name(), objectId)
 						c <- true
 					}
 					return
 				}
 
 				if hfd.hostsfile.SetHostsEntry(objectId, drm.GetResourceHostsEntry(newObj)) {
+					log.Printf("Updating entry for %s: %s\n", drm.Name(), objectId)
 					c <- true
 				}
 			},

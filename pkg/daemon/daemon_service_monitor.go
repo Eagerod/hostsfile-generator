@@ -16,6 +16,10 @@ type DaemonServiceMonitor struct {
 	searchDomain string
 }
 
+func (d *DaemonServiceMonitor) Name() string {
+	return "service"
+}
+
 func (d *DaemonServiceMonitor) Informer(sif informers.SharedInformerFactory) cache.SharedInformer {
 	return sif.Core().V1().Services().Informer()
 }

@@ -17,6 +17,10 @@ type DaemonIngressMonitor struct {
 	ingressIp string
 }
 
+func (d *DaemonIngressMonitor) Name() string {
+	return "ingress"
+}
+
 func (d *DaemonIngressMonitor) Informer(sif informers.SharedInformerFactory) cache.SharedInformer {
 	return sif.Extensions().V1beta1().Ingresses().Informer()
 }
