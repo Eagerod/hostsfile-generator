@@ -13,7 +13,6 @@ import (
 )
 
 type DaemonIngressMonitor struct {
-	hostsfile hostsfile.IHostsFile
 	ingressIp string
 }
 
