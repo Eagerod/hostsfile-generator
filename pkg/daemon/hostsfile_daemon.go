@@ -22,9 +22,7 @@ type DaemonResourceMonitor interface {
 	Informer(sif informers.SharedInformerFactory) cache.SharedInformer
 
 	ValidateResource(obj interface{}) (string, error)
-	HandleNewResource(objectId string, obj interface{}) bool
-	HandleDeletedResource(objectId string, obj interface{}) bool
-	HandleUpdatedResource(objectId string, obj interface{}) bool
+	GetResourceHostsEntry(obj interface{}) hostsfile.HostsEntry
 }
 
 type HostsFileDaemon struct {
@@ -122,7 +120,7 @@ func (hfd *HostsFileDaemon) Monitor(c chan<- bool, drm DaemonResourceMonitor) {
 					return
 				}
 
-				if drm.HandleNewResource(objectId, obj) {
+				if hfd.hostsfile.SetHostsEntry(objectId, drm.GetResourceHostsEntry(obj)) {
 					c <- true
 				}
 			},
@@ -132,17 +130,20 @@ func (hfd *HostsFileDaemon) Monitor(c chan<- bool, drm DaemonResourceMonitor) {
 					return
 				}
 
-				if drm.HandleDeletedResource(objectId, obj) {
+				if hfd.hostsfile.RemoveHostsEntry(objectId) {
 					c <- true
 				}
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				objectId, err := drm.ValidateResource(newObj)
 				if err != nil {
+					if objectId != "" &&  hfd.hostsfile.RemoveHostsEntry(objectId) {
+						c <- true
+					}
 					return
 				}
 
-				if drm.HandleUpdatedResource(objectId, newObj) {
+				if hfd.hostsfile.SetHostsEntry(objectId, drm.GetResourceHostsEntry(newObj)) {
 					c <- true
 				}
 			},

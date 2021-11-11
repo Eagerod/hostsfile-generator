@@ -3,7 +3,6 @@ package daemon
 import (
 	"errors"
 	"fmt"
-	"log"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/client-go/informers"
@@ -36,50 +35,13 @@ func (d *DaemonServiceMonitor) ValidateResource(obj interface{}) (string, error)
 	return objectId, nil
 }
 
-func (d *DaemonServiceMonitor) HandleNewResource(objectId string, obj interface{}) bool {
+func (d *DaemonServiceMonitor) GetResourceHostsEntry(obj interface{}) hostsfile.HostsEntry {
 	service, ok := obj.(*v1.Service)
 	if !ok {
-		return false
+		panic("Failed to get service from pre-validated object.")
 	}
 
-	if d.setHostsEntry(objectId, service) {
-		log.Println("Updating hostsfile from discovered service", objectId)
-		return true
-	}
-
-	return false
-}
-
-func (d *DaemonServiceMonitor) HandleDeletedResource(objectId string, obj interface{}) bool {
-	_, ok := obj.(*v1.Service)
-	if !ok {
-		return false
-	}
-
-	if d.hostsfile.RemoveHostsEntry(objectId) {
-		log.Println("Updating hostsfile from removed service", objectId)
-		return true
-	}
-
-	return false
-}
-
-func (d *DaemonServiceMonitor) HandleUpdatedResource(objectId string, obj interface{}) bool {
-	service, ok := obj.(*v1.Service)
-	if !ok {
-		return false
-	}
-
-	if d.setHostsEntry(objectId, service) {
-		log.Println("Updating hostsfile from updated service", objectId)
-		return true
-	}
-
-	return false
-}
-
-func (d *DaemonServiceMonitor) setHostsEntry(objectId string, service *v1.Service) bool {
 	fqdn := fmt.Sprintf("%s.%s.", service.ObjectMeta.Name, d.searchDomain)
 	he := hostsfile.NewHostsEntry(service.Spec.LoadBalancerIP, []string{fqdn})
-	return d.hostsfile.SetHostsEntry(objectId, *he)
+	return *he
 }

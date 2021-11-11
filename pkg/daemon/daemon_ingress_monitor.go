@@ -3,7 +3,6 @@ package daemon
 import (
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -42,49 +41,12 @@ func (d *DaemonIngressMonitor) ValidateResource(obj interface{}) (string, error)
 	return objectId, nil
 }
 
-func (d *DaemonIngressMonitor) HandleNewResource(objectId string, obj interface{}) bool {
+func (d *DaemonIngressMonitor) GetResourceHostsEntry(obj interface{}) hostsfile.HostsEntry {
 	ingress, ok := obj.(*extensionsv1beta1.Ingress)
 	if !ok {
-		return false
+		panic("Failed to get Ingress from pre-validated type.")
 	}
 
-	if d.setHostsEntry(objectId, ingress) {
-		log.Println("Updating hostsfile from discovered ingress", objectId)
-		return true
-	}
-
-	return false
-}
-
-func (d *DaemonIngressMonitor) HandleDeletedResource(objectId string, obj interface{}) bool {
-	_, ok := obj.(*extensionsv1beta1.Ingress)
-	if !ok {
-		return false
-	}
-
-	if d.hostsfile.RemoveHostsEntry(objectId) {
-		log.Println("Updating hostsfile from removed ingress", objectId)
-		return true
-	}
-
-	return false
-}
-
-func (d *DaemonIngressMonitor) HandleUpdatedResource(objectId string, obj interface{}) bool {
-	ingress, ok := obj.(*extensionsv1beta1.Ingress)
-	if !ok {
-		return false
-	}
-
-	if d.setHostsEntry(objectId, ingress) {
-		log.Println("Updating hostsfile from updated ingress", objectId)
-		return true
-	}
-
-	return false
-}
-
-func (d *DaemonIngressMonitor) setHostsEntry(objectId string, ingress *extensionsv1beta1.Ingress) bool {
 	hostnames := []string{}
 
 	for _, rule := range ingress.Spec.Rules {
@@ -96,5 +58,5 @@ func (d *DaemonIngressMonitor) setHostsEntry(objectId string, ingress *extension
 	}
 
 	he := hostsfile.NewHostsEntry(d.ingressIp, hostnames)
-	return d.hostsfile.SetHostsEntry(objectId, *he)
+	return *he
 }
