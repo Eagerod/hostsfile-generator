@@ -77,12 +77,21 @@ func TestDaemonIngressMonitorValidateResourceNotNginxIngress(t *testing.T) {
 }
 
 func TestDaemonIngressMonitorGetResourceHostsEntry(t *testing.T) {
-	drm := DaemonIngressMonitor{"192.168.1.1"}
+	drm := DaemonIngressMonitor{"192.168.1.1", "internal.aleemhaji.com"}
 
 	ingress := validTestIngress()
 
-	e := hostsfile.NewHostsEntry("192.168.1.1", []string{"some-ingress.internal.aleemhaji.com"})
+	e := hostsfile.NewHostsEntry("192.168.1.1", []string{"some-ingress.internal.aleemhaji.com."})
 	he := drm.GetResourceHostsEntry(ingress)
+	assert.Equal(t, *e, he)
 
+	ingress.Spec.Rules = []extensionsv1beta1.IngressRule{
+		extensionsv1beta1.IngressRule{
+			Host: "some-ingress",
+		},
+	}
+
+	e = hostsfile.NewHostsEntry("192.168.1.1", []string{"some-ingress"})
+	he = drm.GetResourceHostsEntry(ingress)
 	assert.Equal(t, *e, he)
 }

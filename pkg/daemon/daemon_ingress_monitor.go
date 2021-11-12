@@ -13,7 +13,8 @@ import (
 )
 
 type DaemonIngressMonitor struct {
-	ingressIp string
+	ingressIp    string
+	searchDomain string
 }
 
 func (d *DaemonIngressMonitor) Name() string {
@@ -53,7 +54,7 @@ func (d *DaemonIngressMonitor) GetResourceHostsEntry(obj interface{}) hostsfile.
 	hostnames := []string{}
 
 	for _, rule := range ingress.Spec.Rules {
-		if strings.HasSuffix(rule.Host, d.ingressIp) {
+		if strings.HasSuffix(rule.Host, d.searchDomain) {
 			hostnames = append(hostnames, rule.Host+".")
 		} else {
 			hostnames = append(hostnames, rule.Host)
