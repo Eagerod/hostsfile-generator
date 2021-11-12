@@ -26,6 +26,8 @@ func Run() error {
 		return errors.New("Invalid configuration")
 	}
 
+	// If running in the cluster, pull the service account token, else, pull
+	//   the values from an environment variable.
 	daemonConfig, err := daemon.NewDaemonConfigInCluster(*ip, *searchDomain)
 	if err != nil {
 		serverIp := os.Getenv("SERVER_IP")

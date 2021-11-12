@@ -20,13 +20,12 @@ type DaemonConfig struct {
 }
 
 // Assumes that this is running in the same pod as the pihole.
-// Uses the pod's own hostname to
+// Uses the pod's own hostname to find the pod's name.
 func NewDaemonConfigInCluster(ingressIp string, searchDomain string) (*DaemonConfig, error) {
 	if _, err := os.Stat("/var/run/secrets/kubernetes.io/serviceaccount/token"); os.IsNotExist(err) {
 		return nil, errors.New("Cannot find service account token. Maybe it hasn't been attached?")
 	}
 
-	// path/to/whatever does not exist
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, err
@@ -47,8 +46,6 @@ func NewDaemonConfigInCluster(ingressIp string, searchDomain string) (*DaemonCon
 }
 
 func NewDaemonConfig(ingressIp string, searchDomain string, clusterIp string, bearerToken string, piholePodName string) (*DaemonConfig, error) {
-	// If running in the cluster, pull the service account token, else, pull
-	//   the token from an environment variable.
 	config := &rest.Config{}
 	err := rest.SetKubernetesDefaults(config)
 	if err != nil {
