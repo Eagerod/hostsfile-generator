@@ -1,17 +1,12 @@
 package daemon
 
 import (
-	"fmt"
 	"log"
-	"os"
 	"syscall"
 	"time"
 
-	"k8s.io/api/core/v1"
 	"k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/remotecommand"
 
 	"github.com/Eagerod/hostsfile-generator/pkg/hostsfile"
 	"github.com/Eagerod/hostsfile-generator/pkg/interrupt"
@@ -124,7 +119,7 @@ func (hfd *HostsFileDaemon) performUpdates() {
 		//   immediately
 		if time.Now().Sub(lastUpdate).Minutes() >= 1 {
 			log.Println("Last update was more than 1 minute ago. Updating immediately.")
-			err := WriteHostsFileAndRestartPihole(&hfd.config, hostsfile)
+			err := WriteHostsFileAndRestartPihole(hfd.config.RestConfig, hfd.config.KubernetesClientSet, hfd.config.PiholePodName, hostsfile)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -140,7 +135,7 @@ func (hfd *HostsFileDaemon) performUpdates() {
 			continue
 		}
 
-		err := WriteHostsFileAndRestartPihole(&hfd.config, hostsfile)
+		err := WriteHostsFileAndRestartPihole(hfd.config.RestConfig, hfd.config.KubernetesClientSet, hfd.config.PiholePodName, hostsfile)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -152,57 +147,4 @@ func (hfd *HostsFileDaemon) updateAfterInterval(delay time.Duration) {
 	time.Sleep(delay)
 	log.Println("Forcing update to ensure consistency")
 	hfd.updatesChannel <- true
-}
-
-func WriteHostsFileAndRestartPihole(daemonConfig *DaemonConfig, hostsfile string) error {
-	log.Println("Updating kube.list in pod:", daemonConfig.PiholePodName)
-	if err := CopyFileToPod(daemonConfig, "/etc/pihole/kube.list", hostsfile); err != nil {
-		return err
-	}
-
-	log.Println("Restarting DNS service in pod:", daemonConfig.PiholePodName)
-	if err := ExecInPod(daemonConfig, []string{"pihole", "restartdns"}); err != nil {
-		return err
-	}
-
-	log.Println("Successfully restarted DNS service in pod:", daemonConfig.PiholePodName)
-	return nil
-}
-
-func CopyFileToPod(daemonConfig *DaemonConfig, filepath string, contents string) error {
-	// There's certainly a more correct way of doing this, but that's a lot of
-	//   extra code.
-	script := fmt.Sprintf("cat <<EOF > %s\n%s\nEOF", filepath, contents)
-	return ExecInPod(daemonConfig, []string{"sh", "-c", script})
-}
-
-func ExecInPod(daemonConfig *DaemonConfig, command []string) error {
-	api := daemonConfig.KubernetesClientSet.CoreV1()
-
-	execResource := api.RESTClient().Post().Resource("pods").Name(daemonConfig.PiholePodName).
-		Namespace("default").SubResource("exec").Param("container", "pihole")
-
-	podExecOptions := &v1.PodExecOptions{
-		Command: command,
-		Stdin:   true,
-		Stdout:  true,
-		Stderr:  true,
-		TTY:     true,
-	}
-
-	execResource.VersionedParams(
-		podExecOptions,
-		scheme.ParameterCodec,
-	)
-
-	exec, err := remotecommand.NewSPDYExecutor(daemonConfig.RestConfig, "POST", execResource.URL())
-	if err != nil {
-		return err
-	}
-
-	return exec.Stream(remotecommand.StreamOptions{
-		Stdin:  os.Stdin,
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
-	})
 }
