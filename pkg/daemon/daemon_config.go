@@ -45,7 +45,7 @@ func NewDaemonConfigInCluster(ingressIp string, searchDomain string) (*DaemonCon
 	return &daemonConfig, nil
 }
 
-func NewDaemonConfig(ingressIp string, searchDomain string, clusterIp string, bearerToken string, piholePodName string) (*DaemonConfig, error) {
+func NewDaemonConfig(ingressIp, searchDomain, clusterIp, bearerToken, piholePodName string) (*DaemonConfig, error) {
 	config := &rest.Config{}
 	err := rest.SetKubernetesDefaults(config)
 	if err != nil {

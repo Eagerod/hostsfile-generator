@@ -31,6 +31,10 @@ type IHostsFileDaemon interface {
 	Run()
 
 	Monitor(drm DaemonResourceMonitor)
+
+	InformerAddFunc(drm DaemonResourceMonitor) func(obj interface{})
+	InformerDeleteFunc(drm DaemonResourceMonitor) func(obj interface{})
+	InformerUpdateFunc(drm DaemonResourceMonitor) func(oldObj, newObj interface{})
 }
 
 func NewHostsFileDaemon(config DaemonConfig) *HostsFileDaemon {
@@ -59,49 +63,61 @@ func (hfd *HostsFileDaemon) Monitor(drm DaemonResourceMonitor) {
 
 	drm.Informer(informerFactory).AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
-				objectId, err := drm.ValidateResource(obj)
-				if err != nil {
-					return
-				}
-
-				if hfd.hostsfile.SetHostsEntry(objectId, drm.GetResourceHostsEntry(obj)) {
-					log.Printf("Creating entry for %s: %s\n", drm.Name(), objectId)
-					hfd.updatesChannel <- true
-				}
-			},
-			DeleteFunc: func(obj interface{}) {
-				objectId, err := drm.ValidateResource(obj)
-				if err != nil {
-					return
-				}
-
-				if hfd.hostsfile.RemoveHostsEntry(objectId) {
-					log.Printf("Remove entry for %s: %s\n", drm.Name(), objectId)
-					hfd.updatesChannel <- true
-				}
-			},
-			UpdateFunc: func(oldObj, newObj interface{}) {
-				objectId, err := drm.ValidateResource(newObj)
-				if err != nil {
-					if objectId != "" && hfd.hostsfile.RemoveHostsEntry(objectId) {
-						log.Printf("Removing outdated entry %s: %s\n", drm.Name(), objectId)
-						hfd.updatesChannel <- true
-					}
-					return
-				}
-
-				if hfd.hostsfile.SetHostsEntry(objectId, drm.GetResourceHostsEntry(newObj)) {
-					log.Printf("Updating entry for %s: %s\n", drm.Name(), objectId)
-					hfd.updatesChannel <- true
-				}
-			},
+			AddFunc: hfd.InformerAddFunc(drm),
+			DeleteFunc: hfd.InformerDeleteFunc(drm),
+			UpdateFunc: hfd.InformerUpdateFunc(drm),
 		},
 	)
 
 	stop := make(chan struct{})
 	informerFactory.Start(stop)
 	informerFactory.WaitForCacheSync(stop)
+}
+
+func (hfd *HostsFileDaemon) InformerAddFunc(drm DaemonResourceMonitor) func(obj interface{}) {
+	return func(obj interface{}) {
+		objectId, err := drm.ValidateResource(obj)
+		if err != nil {
+			return
+		}
+
+		if hfd.hostsfile.SetHostsEntry(objectId, drm.GetResourceHostsEntry(obj)) {
+			log.Printf("Creating entry for %s: %s\n", drm.Name(), objectId)
+			hfd.updatesChannel <- true
+		}
+	}
+}
+
+func (hfd *HostsFileDaemon) InformerDeleteFunc(drm DaemonResourceMonitor) func(obj interface{}) {
+	return func(obj interface{}) {
+		objectId, err := drm.ValidateResource(obj)
+		if err != nil {
+			return
+		}
+
+		if hfd.hostsfile.RemoveHostsEntry(objectId) {
+			log.Printf("Remove entry for %s: %s\n", drm.Name(), objectId)
+			hfd.updatesChannel <- true
+		}
+	}
+}
+
+func (hfd *HostsFileDaemon) InformerUpdateFunc(drm DaemonResourceMonitor) func(oldObj, newObj interface{}) {
+	return func(oldObj, newObj interface{}) {
+		objectId, err := drm.ValidateResource(newObj)
+		if err != nil {
+			if objectId != "" && hfd.hostsfile.RemoveHostsEntry(objectId) {
+				log.Printf("Removing outdated entry %s: %s\n", drm.Name(), objectId)
+				hfd.updatesChannel <- true
+			}
+			return
+		}
+
+		if hfd.hostsfile.SetHostsEntry(objectId, drm.GetResourceHostsEntry(newObj)) {
+			log.Printf("Updating entry for %s: %s\n", drm.Name(), objectId)
+			hfd.updatesChannel <- true
+		}
+	}
 }
 
 func (hfd *HostsFileDaemon) performUpdates() {
