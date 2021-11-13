@@ -48,7 +48,7 @@ func (hfd *HostsFileDaemon) Run() {
 	go hfd.performUpdates()
 	go hfd.Monitor(&DaemonIngressMonitor{hfd.config.IngressIp, hfd.config.SearchDomain})
 	go hfd.Monitor(&DaemonServiceMonitor{hfd.config.SearchDomain})
-	go hfd.updateAfterInterval(time.Second*60)
+	go hfd.updateAfterInterval(time.Second * 60)
 
 	interrupt.WaitForAnySignal(syscall.SIGINT, syscall.SIGTERM)
 }
@@ -84,7 +84,7 @@ func (hfd *HostsFileDaemon) Monitor(drm DaemonResourceMonitor) {
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				objectId, err := drm.ValidateResource(newObj)
 				if err != nil {
-					if objectId != "" &&  hfd.hostsfile.RemoveHostsEntry(objectId) {
+					if objectId != "" && hfd.hostsfile.RemoveHostsEntry(objectId) {
 						log.Printf("Removing outdated entry %s: %s\n", drm.Name(), objectId)
 						hfd.updatesChannel <- true
 					}
