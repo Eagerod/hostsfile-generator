@@ -63,7 +63,7 @@ func (hfd *HostsFileDaemon) Monitor(drm DaemonResourceMonitor) {
 
 	drm.Informer(informerFactory).AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc: hfd.InformerAddFunc(drm),
+			AddFunc:    hfd.InformerAddFunc(drm),
 			DeleteFunc: hfd.InformerDeleteFunc(drm),
 			UpdateFunc: hfd.InformerUpdateFunc(drm),
 		},

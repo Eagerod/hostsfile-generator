@@ -17,7 +17,7 @@ func TestInformerAddFunc(t *testing.T) {
 	hfd := NewHostsFileDaemon(*dc)
 	dsm := DaemonIngressMonitor{"1", "2"}
 	f := hfd.InformerAddFunc(&dsm)
-	
+
 	i := validTestIngress()
 	f(i)
 
@@ -31,7 +31,7 @@ func TestInformerAddFuncWrongType(t *testing.T) {
 	hfd := NewHostsFileDaemon(*dc)
 	dsm := DaemonIngressMonitor{"1", "2"}
 	f := hfd.InformerAddFunc(&dsm)
-	
+
 	i := validTestService()
 	f(i)
 
@@ -143,7 +143,7 @@ func TestInformerUpdateFuncInvalidated(t *testing.T) {
 	f(i, &ii)
 
 	assert.Equal(t, 1, len(hfd.updatesChannel))
-	
+
 	// Assert that the entry has been removed from the update.
 	assert.False(t, hfd.hostsfile.RemoveHostsEntry(objectId))
 }
