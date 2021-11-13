@@ -6,6 +6,8 @@ COPY go.mod go.sum ./
 
 RUN go mod download
 
+ARG VERSION UnspecifiedContainerVersion
+
 COPY . .
 
 RUN make
