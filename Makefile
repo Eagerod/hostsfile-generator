@@ -102,4 +102,4 @@ clean:
 .PHONY: container
 container: $(BIN_NAME)
 	@version="$$(git describe --dirty | sed 's/^v//')"; \
-	docker build . --build-arg VERSION="$$version" -t "registry.internal.aleemhaji.com/hostsfile-daemon:$$(echo $$version)"
+	docker build . --build-arg VERSION="$$version" -t "registry.internal.aleemhaji.com/hostsfile-daemon:$$version"
