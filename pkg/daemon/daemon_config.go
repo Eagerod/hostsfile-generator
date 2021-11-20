@@ -46,6 +46,14 @@ func NewDaemonConfigInCluster(ingressIp string, searchDomain string) (*DaemonCon
 }
 
 func NewDaemonConfig(ingressIp, searchDomain, clusterIp, bearerToken, piholePodName string) (*DaemonConfig, error) {
+	if ingressIp == "" {
+		return nil, errors.New("Ingress IP must be provided.")
+	}
+
+	if clusterIp == "" {
+		return nil, errors.New("Kubernetes API server host must be provided.")
+	}
+
 	config := &rest.Config{}
 	err := rest.SetKubernetesDefaults(config)
 	if err != nil {
