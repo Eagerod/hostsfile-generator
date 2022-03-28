@@ -2,15 +2,10 @@ package daemon
 
 import (
 	"testing"
-)
 
-import (
 	"github.com/stretchr/testify/assert"
-
 	"k8s.io/api/core/v1"
-)
 
-import (
 	"github.com/Eagerod/hostsfile-generator/pkg/hostsfile"
 )
 
@@ -44,7 +39,7 @@ func TestDaemonServiceMonitorValidateResourceNotService(t *testing.T) {
 	drm := DaemonServiceMonitor{}
 
 	objectId, err := drm.ValidateResource(&drm)
-	assert.Equal(t, "Failed to get service from provided object.", err.Error())
+	assert.Equal(t, "failed to get service from provided object", err.Error())
 	assert.Equal(t, "", objectId)
 }
 
@@ -55,7 +50,7 @@ func TestDaemonServiceMonitorValidateResourceNotLoadBalancer(t *testing.T) {
 	service.Spec.Type = "NodePort"
 
 	objectId, err := drm.ValidateResource(service)
-	assert.Equal(t, "Skipping service (default/some-service) because it isn't of type LoadBalancer.", err.Error())
+	assert.Equal(t, "skipping service (default/some-service) because it isn't of type LoadBalancer", err.Error())
 	assert.Equal(t, "default/some-service", objectId)
 }
 

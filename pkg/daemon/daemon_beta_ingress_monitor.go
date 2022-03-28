@@ -12,40 +12,40 @@ import (
 	"github.com/Eagerod/hostsfile-generator/pkg/hostsfile"
 )
 
-type DaemonIngressMonitor struct {
+type DaemonBetaIngressMonitor struct {
 	ingressIp    string
 	searchDomain string
 }
 
-func (d *DaemonIngressMonitor) Name() string {
+func (d *DaemonBetaIngressMonitor) Name() string {
 	return "ingress"
 }
 
-func (d *DaemonIngressMonitor) Informer(sif informers.SharedInformerFactory) cache.SharedInformer {
+func (d *DaemonBetaIngressMonitor) Informer(sif informers.SharedInformerFactory) cache.SharedInformer {
 	return sif.Extensions().V1beta1().Ingresses().Informer()
 }
 
-func (d *DaemonIngressMonitor) ValidateResource(obj interface{}) (string, error) {
+func (d *DaemonBetaIngressMonitor) ValidateResource(obj interface{}) (string, error) {
 	ingress, ok := obj.(*extensionsv1beta1.Ingress)
 	if !ok {
-		return "", errors.New("Failed to get ingress from provided object.")
+		return "", errors.New("failed to get ingress from provided object")
 	}
 
 	objectId := fmt.Sprintf("%s/%s", ingress.ObjectMeta.Namespace, ingress.ObjectMeta.Name)
 
 	ingressClass, ok := ingress.Annotations["kubernetes.io/ingress.class"]
 	if !ok {
-		return objectId, fmt.Errorf("Skipping ingress (%s) because it doesn't have an ingress class.", objectId)
+		return objectId, fmt.Errorf("skipping ingress (%s) because it doesn't have an ingress class", objectId)
 	}
 
 	if ingressClass != "nginx" {
-		return objectId, fmt.Errorf("Skipping ingress (%s) because it doesn't belong to NGINX Ingress Controller.", objectId)
+		return objectId, fmt.Errorf("skipping ingress (%s) because it doesn't belong to NGINX Ingress Controller", objectId)
 	}
 
 	return objectId, nil
 }
 
-func (d *DaemonIngressMonitor) GetResourceHostsEntry(obj interface{}) hostsfile.HostsEntry {
+func (d *DaemonBetaIngressMonitor) GetResourceHostsEntry(obj interface{}) hostsfile.HostsEntry {
 	ingress, ok := obj.(*extensionsv1beta1.Ingress)
 	if !ok {
 		panic("Failed to get Ingress from pre-validated type.")

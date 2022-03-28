@@ -23,7 +23,7 @@ type DaemonConfig struct {
 // Uses the pod's own hostname to find the pod's name.
 func NewDaemonConfigInCluster(ingressIp string, searchDomain string) (*DaemonConfig, error) {
 	if _, err := os.Stat("/var/run/secrets/kubernetes.io/serviceaccount/token"); os.IsNotExist(err) {
-		return nil, errors.New("Cannot find service account token. Maybe it hasn't been attached?")
+		return nil, errors.New("cannot find service account token. Maybe it hasn't been attached")
 	}
 
 	config, err := rest.InClusterConfig()
@@ -47,11 +47,11 @@ func NewDaemonConfigInCluster(ingressIp string, searchDomain string) (*DaemonCon
 
 func NewDaemonConfig(ingressIp, searchDomain, clusterIp, bearerToken, piholePodName string) (*DaemonConfig, error) {
 	if ingressIp == "" {
-		return nil, errors.New("Ingress IP must be provided.")
+		return nil, errors.New("ingress IP must be provided")
 	}
 
 	if clusterIp == "" {
-		return nil, errors.New("Kubernetes API server host must be provided.")
+		return nil, errors.New("kubernetes API server host must be provided")
 	}
 
 	config := &rest.Config{}
@@ -72,6 +72,9 @@ func NewDaemonConfig(ingressIp, searchDomain, clusterIp, bearerToken, piholePodN
 	config.TLSClientConfig.Insecure = true
 
 	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
 
 	daemonConfig := DaemonConfig{config, clientset, piholePodName, ingressIp, searchDomain}
 	return &daemonConfig, nil

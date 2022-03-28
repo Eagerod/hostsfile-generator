@@ -15,7 +15,7 @@ func TestInformerAddFunc(t *testing.T) {
 	assert.Nil(t, err)
 
 	hfd := NewHostsFileDaemon(*dc)
-	dsm := DaemonIngressMonitor{"1", "2"}
+	dsm := DaemonBetaIngressMonitor{"1", "2"}
 	f := hfd.InformerAddFunc(&dsm)
 
 	i := validTestIngress()
@@ -29,7 +29,7 @@ func TestInformerAddFuncWrongType(t *testing.T) {
 	assert.Nil(t, err)
 
 	hfd := NewHostsFileDaemon(*dc)
-	dsm := DaemonIngressMonitor{"1", "2"}
+	dsm := DaemonBetaIngressMonitor{"1", "2"}
 	f := hfd.InformerAddFunc(&dsm)
 
 	i := validTestService()
@@ -43,11 +43,12 @@ func TestInformerDeleteFunc(t *testing.T) {
 	assert.Nil(t, err)
 
 	hfd := NewHostsFileDaemon(*dc)
-	dsm := DaemonIngressMonitor{"1", "2"}
+	dsm := DaemonBetaIngressMonitor{"1", "2"}
 
 	i := validTestIngress()
 
 	objectId, err := dsm.ValidateResource(i)
+	assert.Nil(t, err)
 	he := dsm.GetResourceHostsEntry(i)
 	hfd.hostsfile.SetHostsEntry(objectId, he)
 
@@ -62,11 +63,12 @@ func TestInformerDeleteFuncWrongType(t *testing.T) {
 	assert.Nil(t, err)
 
 	hfd := NewHostsFileDaemon(*dc)
-	dsm := DaemonIngressMonitor{"1", "2"}
+	dsm := DaemonBetaIngressMonitor{"1", "2"}
 
 	i := validTestIngress()
 
 	objectId, err := dsm.ValidateResource(i)
+	assert.Nil(t, err)
 	he := dsm.GetResourceHostsEntry(i)
 	hfd.hostsfile.SetHostsEntry(objectId, he)
 
@@ -82,11 +84,12 @@ func TestInformerUpdateFunc(t *testing.T) {
 	assert.Nil(t, err)
 
 	hfd := NewHostsFileDaemon(*dc)
-	dsm := DaemonIngressMonitor{"1", "2"}
+	dsm := DaemonBetaIngressMonitor{"1", "2"}
 
 	i := validTestIngress()
 
 	objectId, err := dsm.ValidateResource(i)
+	assert.Nil(t, err)
 	he := dsm.GetResourceHostsEntry(i)
 	hfd.hostsfile.SetHostsEntry(objectId, he)
 
@@ -108,11 +111,12 @@ func TestInformerUpdateFuncWrongType(t *testing.T) {
 	assert.Nil(t, err)
 
 	hfd := NewHostsFileDaemon(*dc)
-	dsm := DaemonIngressMonitor{"1", "2"}
+	dsm := DaemonBetaIngressMonitor{"1", "2"}
 
 	i := validTestIngress()
 
 	objectId, err := dsm.ValidateResource(i)
+	assert.Nil(t, err)
 	he := dsm.GetResourceHostsEntry(i)
 	hfd.hostsfile.SetHostsEntry(objectId, he)
 
@@ -128,11 +132,12 @@ func TestInformerUpdateFuncInvalidated(t *testing.T) {
 	assert.Nil(t, err)
 
 	hfd := NewHostsFileDaemon(*dc)
-	dsm := DaemonIngressMonitor{"1", "2"}
+	dsm := DaemonBetaIngressMonitor{"1", "2"}
 
 	i := validTestIngress()
 
 	objectId, err := dsm.ValidateResource(i)
+	assert.Nil(t, err)
 	he := dsm.GetResourceHostsEntry(i)
 	hfd.hostsfile.SetHostsEntry(objectId, he)
 
