@@ -28,18 +28,18 @@ func (d *DaemonIngressMonitor) Informer(sif informers.SharedInformerFactory) cac
 func (d *DaemonIngressMonitor) ValidateResource(obj interface{}) (string, error) {
 	ingress, ok := obj.(*extensionsv1beta1.Ingress)
 	if !ok {
-		return "", errors.New("Failed to get ingress from provided object.")
+		return "", errors.New("failed to get ingress from provided object")
 	}
 
 	objectId := fmt.Sprintf("%s/%s", ingress.ObjectMeta.Namespace, ingress.ObjectMeta.Name)
 
 	ingressClass, ok := ingress.Annotations["kubernetes.io/ingress.class"]
 	if !ok {
-		return objectId, fmt.Errorf("Skipping ingress (%s) because it doesn't have an ingress class.", objectId)
+		return objectId, fmt.Errorf("skipping ingress (%s) because it doesn't have an ingress class", objectId)
 	}
 
 	if ingressClass != "nginx" {
-		return objectId, fmt.Errorf("Skipping ingress (%s) because it doesn't belong to NGINX Ingress Controller.", objectId)
+		return objectId, fmt.Errorf("skipping ingress (%s) because it doesn't belong to NGINX Ingress Controller", objectId)
 	}
 
 	return objectId, nil

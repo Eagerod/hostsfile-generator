@@ -26,13 +26,13 @@ func (d *DaemonServiceMonitor) Informer(sif informers.SharedInformerFactory) cac
 func (d *DaemonServiceMonitor) ValidateResource(obj interface{}) (string, error) {
 	service, ok := obj.(*v1.Service)
 	if !ok {
-		return "", errors.New("Failed to get service from provided object.")
+		return "", errors.New("failed to get service from provided object")
 	}
 
 	objectId := fmt.Sprintf("%s/%s", service.ObjectMeta.Namespace, service.ObjectMeta.Name)
 
 	if service.Spec.Type != "LoadBalancer" {
-		return objectId, fmt.Errorf("Skipping service (%s) because it isn't of type LoadBalancer.", objectId)
+		return objectId, fmt.Errorf("skipping service (%s) because it isn't of type LoadBalancer", objectId)
 	}
 
 	return objectId, nil

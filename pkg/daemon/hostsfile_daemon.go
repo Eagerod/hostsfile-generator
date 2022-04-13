@@ -122,7 +122,7 @@ func (hfd *HostsFileDaemon) InformerUpdateFunc(drm DaemonResourceMonitor) func(o
 
 func (hfd *HostsFileDaemon) performUpdates() {
 	lastUpdate := time.Now()
-	for _ = range hfd.updatesChannel {
+	for range hfd.updatesChannel {
 		// Check the length of the channel before doing anything.
 		// If there are more items in it, just let the next iteration
 		//    handle the update.
@@ -133,7 +133,7 @@ func (hfd *HostsFileDaemon) performUpdates() {
 		hostsfile := hfd.hostsfile.String()
 		// If the last update was more than 60 seconds ago, write this one
 		//   immediately
-		if time.Now().Sub(lastUpdate).Minutes() >= 1 {
+		if time.Since(lastUpdate).Minutes() >= 1 {
 			log.Println("Last update was more than 1 minute ago. Updating immediately.")
 			err := WriteHostsFileAndRestartPihole(hfd.config.RestConfig, hfd.config.KubernetesClientSet, hfd.config.PiholePodName, hostsfile)
 			if err != nil {
