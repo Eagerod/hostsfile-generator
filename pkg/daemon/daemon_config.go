@@ -23,7 +23,7 @@ type DaemonConfig struct {
 // Uses the pod's own hostname to find the pod's name.
 func NewDaemonConfigInCluster(ingressIp string, searchDomain string) (*DaemonConfig, error) {
 	if _, err := os.Stat("/var/run/secrets/kubernetes.io/serviceaccount/token"); os.IsNotExist(err) {
-		return nil, errors.New("cannot find service account token. Maybe it hasn't been attached")
+		return nil, errors.New("cannot find service account token. Maybe it hasn't been attached?")
 	}
 
 	config, err := rest.InClusterConfig()

@@ -85,9 +85,7 @@ pretty-coverage: test-cover
 
 .PHONY: fmt
 fmt:
-	@$(GO) fmt .
-	@$(GO) fmt $(CMD_PACKAGE_DIR)
-	@$(GO) fmt $(PKG_PACKAGE_DIR)
+	@$(GO) fmt ./...
 
 .PHONY: fmt-check
 fmt-check:

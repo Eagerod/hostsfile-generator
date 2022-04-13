@@ -48,7 +48,7 @@ func TestInformerDeleteFunc(t *testing.T) {
 	i := validTestBetaIngress()
 
 	objectId, err := dsm.ValidateResource(i)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	he := dsm.GetResourceHostsEntry(i)
 	hfd.hostsfile.SetHostsEntry(objectId, he)
 
@@ -68,7 +68,7 @@ func TestInformerDeleteFuncWrongType(t *testing.T) {
 	i := validTestBetaIngress()
 
 	objectId, err := dsm.ValidateResource(i)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	he := dsm.GetResourceHostsEntry(i)
 	hfd.hostsfile.SetHostsEntry(objectId, he)
 
@@ -89,7 +89,7 @@ func TestInformerUpdateFunc(t *testing.T) {
 	i := validTestBetaIngress()
 
 	objectId, err := dsm.ValidateResource(i)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	he := dsm.GetResourceHostsEntry(i)
 	hfd.hostsfile.SetHostsEntry(objectId, he)
 
@@ -116,7 +116,7 @@ func TestInformerUpdateFuncWrongType(t *testing.T) {
 	i := validTestBetaIngress()
 
 	objectId, err := dsm.ValidateResource(i)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	he := dsm.GetResourceHostsEntry(i)
 	hfd.hostsfile.SetHostsEntry(objectId, he)
 
@@ -137,7 +137,7 @@ func TestInformerUpdateFuncInvalidated(t *testing.T) {
 	i := validTestBetaIngress()
 
 	objectId, err := dsm.ValidateResource(i)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	he := dsm.GetResourceHostsEntry(i)
 	hfd.hostsfile.SetHostsEntry(objectId, he)
 

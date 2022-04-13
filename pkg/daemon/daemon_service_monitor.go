@@ -41,7 +41,7 @@ func (d *DaemonServiceMonitor) ValidateResource(obj interface{}) (string, error)
 func (d *DaemonServiceMonitor) GetResourceHostsEntry(obj interface{}) hostsfile.HostsEntry {
 	service, ok := obj.(*v1.Service)
 	if !ok {
-		panic("failed to get service from pre-validated object")
+		panic("Failed to get service from pre-validated object.")
 	}
 
 	fqdn := fmt.Sprintf("%s.%s.", service.ObjectMeta.Name, d.searchDomain)
