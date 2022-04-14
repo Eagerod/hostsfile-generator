@@ -4,20 +4,20 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	networkingv1 "k8s.io/api/networking/v1"
+	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 
 	"github.com/Eagerod/hostsfile-generator/pkg/hostsfile"
 )
 
-func validTestIngress() *networkingv1.Ingress {
-	ingress := networkingv1.Ingress{}
+func validTestBetaIngress() *extensionsv1beta1.Ingress {
+	ingress := extensionsv1beta1.Ingress{}
 	ingress.ObjectMeta.Namespace = "default"
 	ingress.ObjectMeta.Name = "some-ingress"
 	ingress.Annotations = make(map[string]string)
 	ingress.Annotations["kubernetes.io/ingress.class"] = "nginx"
 
-	ingress.Spec.Rules = []networkingv1.IngressRule{
-		networkingv1.IngressRule{
+	ingress.Spec.Rules = []extensionsv1beta1.IngressRule{
+		extensionsv1beta1.IngressRule{
 			Host: "some-ingress.internal.aleemhaji.com",
 		},
 	}
@@ -25,34 +25,34 @@ func validTestIngress() *networkingv1.Ingress {
 	return &ingress
 }
 
-func TestDaemonIngressMonitorName(t *testing.T) {
-	drm := DaemonIngressMonitor{}
+func TestDaemonBetaIngressMonitorName(t *testing.T) {
+	drm := DaemonBetaIngressMonitor{}
 
 	assert.Equal(t, "ingress", drm.Name())
 }
 
-func TestDaemonIngressMonitorValidateResource(t *testing.T) {
-	drm := DaemonIngressMonitor{}
+func TestDaemonBetaIngressMonitorValidateResource(t *testing.T) {
+	drm := DaemonBetaIngressMonitor{}
 
-	ingress := validTestIngress()
+	ingress := validTestBetaIngress()
 
 	objectId, err := drm.ValidateResource(ingress)
 	assert.Nil(t, err)
 	assert.Equal(t, "default/some-ingress", objectId)
 }
 
-func TestDaemonIngressMonitorValidateResourceNotIngress(t *testing.T) {
-	drm := DaemonIngressMonitor{}
+func TestDaemonBetaIngressMonitorValidateResourceNotIngress(t *testing.T) {
+	drm := DaemonBetaIngressMonitor{}
 
 	objectId, err := drm.ValidateResource(&drm)
 	assert.Equal(t, "failed to get ingress from provided object", err.Error())
 	assert.Equal(t, "", objectId)
 }
 
-func TestDaemonIngressMonitorValidateResourceNoIngressClass(t *testing.T) {
-	drm := DaemonIngressMonitor{}
+func TestDaemonBetaIngressMonitorValidateResourceNoIngressClass(t *testing.T) {
+	drm := DaemonBetaIngressMonitor{}
 
-	ingress := validTestIngress()
+	ingress := validTestBetaIngress()
 	delete(ingress.Annotations, "kubernetes.io/ingress.class")
 
 	objectId, err := drm.ValidateResource(ingress)
@@ -60,10 +60,10 @@ func TestDaemonIngressMonitorValidateResourceNoIngressClass(t *testing.T) {
 	assert.Equal(t, "default/some-ingress", objectId)
 }
 
-func TestDaemonIngressMonitorValidateResourceNotNginxIngress(t *testing.T) {
-	drm := DaemonIngressMonitor{}
+func TestDaemonBetaIngressMonitorValidateResourceNotNginxIngress(t *testing.T) {
+	drm := DaemonBetaIngressMonitor{}
 
-	ingress := validTestIngress()
+	ingress := validTestBetaIngress()
 	ingress.Annotations["kubernetes.io/ingress.class"] = "nginx-external"
 
 	objectId, err := drm.ValidateResource(ingress)
@@ -71,17 +71,17 @@ func TestDaemonIngressMonitorValidateResourceNotNginxIngress(t *testing.T) {
 	assert.Equal(t, "default/some-ingress", objectId)
 }
 
-func TestDaemonIngressMonitorGetResourceHostsEntry(t *testing.T) {
-	drm := DaemonIngressMonitor{"192.168.1.1", "internal.aleemhaji.com"}
+func TestDaemonBetaIngressMonitorGetResourceHostsEntry(t *testing.T) {
+	drm := DaemonBetaIngressMonitor{"192.168.1.1", "internal.aleemhaji.com"}
 
-	ingress := validTestIngress()
+	ingress := validTestBetaIngress()
 
 	e := hostsfile.NewHostsEntry("192.168.1.1", []string{"some-ingress.internal.aleemhaji.com."})
 	he := drm.GetResourceHostsEntry(ingress)
 	assert.Equal(t, *e, he)
 
-	ingress.Spec.Rules = []networkingv1.IngressRule{
-		networkingv1.IngressRule{
+	ingress.Spec.Rules = []extensionsv1beta1.IngressRule{
+		extensionsv1beta1.IngressRule{
 			Host: "some-ingress",
 		},
 	}

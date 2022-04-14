@@ -50,6 +50,7 @@ func (hfd *HostsFileDaemon) Run() {
 	defer close(hfd.updatesChannel)
 
 	go hfd.performUpdates()
+	go hfd.Monitor(&DaemonBetaIngressMonitor{hfd.config.IngressIp, hfd.config.SearchDomain})
 	go hfd.Monitor(&DaemonIngressMonitor{hfd.config.IngressIp, hfd.config.SearchDomain})
 	go hfd.Monitor(&DaemonServiceMonitor{hfd.config.SearchDomain})
 	go hfd.updateAfterInterval(time.Second * 60)

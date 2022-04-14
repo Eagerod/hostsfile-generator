@@ -13,6 +13,12 @@ import (
 )
 
 func WriteHostsFileAndRestartPihole(config *rest.Config, clientset *kubernetes.Clientset, podName string, hostsfile string) error {
+	if podName == "" {
+		log.Println("No pi-hole pod given. Outputting hostsfile to stdout instead of updating pod.")
+		fmt.Println(hostsfile)
+		return nil
+	}
+
 	log.Println("Updating kube.list in pod:", podName)
 	if err := CopyFileToPod(config, clientset, podName, "/etc/pihole/kube.list", hostsfile); err != nil {
 		return err

@@ -2,15 +2,10 @@ package daemon
 
 import (
 	"testing"
-)
 
-import (
 	"github.com/stretchr/testify/assert"
-
 	"k8s.io/api/core/v1"
-)
 
-import (
 	"github.com/Eagerod/hostsfile-generator/pkg/hostsfile"
 )
 

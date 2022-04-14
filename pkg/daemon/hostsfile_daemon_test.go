@@ -15,10 +15,10 @@ func TestInformerAddFunc(t *testing.T) {
 	assert.Nil(t, err)
 
 	hfd := NewHostsFileDaemon(*dc)
-	dsm := DaemonIngressMonitor{"1", "2"}
+	dsm := DaemonBetaIngressMonitor{"1", "2"}
 	f := hfd.InformerAddFunc(&dsm)
 
-	i := validTestIngress()
+	i := validTestBetaIngress()
 	f(i)
 
 	assert.Equal(t, 1, len(hfd.updatesChannel))
@@ -29,7 +29,7 @@ func TestInformerAddFuncWrongType(t *testing.T) {
 	assert.Nil(t, err)
 
 	hfd := NewHostsFileDaemon(*dc)
-	dsm := DaemonIngressMonitor{"1", "2"}
+	dsm := DaemonBetaIngressMonitor{"1", "2"}
 	f := hfd.InformerAddFunc(&dsm)
 
 	i := validTestService()
@@ -43,9 +43,9 @@ func TestInformerDeleteFunc(t *testing.T) {
 	assert.Nil(t, err)
 
 	hfd := NewHostsFileDaemon(*dc)
-	dsm := DaemonIngressMonitor{"1", "2"}
+	dsm := DaemonBetaIngressMonitor{"1", "2"}
 
-	i := validTestIngress()
+	i := validTestBetaIngress()
 
 	objectId, err := dsm.ValidateResource(i)
 	assert.NoError(t, err)
@@ -63,9 +63,9 @@ func TestInformerDeleteFuncWrongType(t *testing.T) {
 	assert.Nil(t, err)
 
 	hfd := NewHostsFileDaemon(*dc)
-	dsm := DaemonIngressMonitor{"1", "2"}
+	dsm := DaemonBetaIngressMonitor{"1", "2"}
 
-	i := validTestIngress()
+	i := validTestBetaIngress()
 
 	objectId, err := dsm.ValidateResource(i)
 	assert.NoError(t, err)
@@ -84,9 +84,9 @@ func TestInformerUpdateFunc(t *testing.T) {
 	assert.Nil(t, err)
 
 	hfd := NewHostsFileDaemon(*dc)
-	dsm := DaemonIngressMonitor{"1", "2"}
+	dsm := DaemonBetaIngressMonitor{"1", "2"}
 
-	i := validTestIngress()
+	i := validTestBetaIngress()
 
 	objectId, err := dsm.ValidateResource(i)
 	assert.NoError(t, err)
@@ -111,9 +111,9 @@ func TestInformerUpdateFuncWrongType(t *testing.T) {
 	assert.Nil(t, err)
 
 	hfd := NewHostsFileDaemon(*dc)
-	dsm := DaemonIngressMonitor{"1", "2"}
+	dsm := DaemonBetaIngressMonitor{"1", "2"}
 
-	i := validTestIngress()
+	i := validTestBetaIngress()
 
 	objectId, err := dsm.ValidateResource(i)
 	assert.NoError(t, err)
@@ -132,9 +132,9 @@ func TestInformerUpdateFuncInvalidated(t *testing.T) {
 	assert.Nil(t, err)
 
 	hfd := NewHostsFileDaemon(*dc)
-	dsm := DaemonIngressMonitor{"1", "2"}
+	dsm := DaemonBetaIngressMonitor{"1", "2"}
 
-	i := validTestIngress()
+	i := validTestBetaIngress()
 
 	objectId, err := dsm.ValidateResource(i)
 	assert.NoError(t, err)

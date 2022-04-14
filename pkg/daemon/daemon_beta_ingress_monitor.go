@@ -5,28 +5,28 @@ import (
 	"fmt"
 	"strings"
 
-	networkingv1 "k8s.io/api/networking/v1"
+	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/Eagerod/hostsfile-generator/pkg/hostsfile"
 )
 
-type DaemonIngressMonitor struct {
+type DaemonBetaIngressMonitor struct {
 	ingressIp    string
 	searchDomain string
 }
 
-func (d *DaemonIngressMonitor) Name() string {
+func (d *DaemonBetaIngressMonitor) Name() string {
 	return "ingress"
 }
 
-func (d *DaemonIngressMonitor) Informer(sif informers.SharedInformerFactory) cache.SharedInformer {
+func (d *DaemonBetaIngressMonitor) Informer(sif informers.SharedInformerFactory) cache.SharedInformer {
 	return sif.Extensions().V1beta1().Ingresses().Informer()
 }
 
-func (d *DaemonIngressMonitor) ValidateResource(obj interface{}) (string, error) {
-	ingress, ok := obj.(*networkingv1.Ingress)
+func (d *DaemonBetaIngressMonitor) ValidateResource(obj interface{}) (string, error) {
+	ingress, ok := obj.(*extensionsv1beta1.Ingress)
 	if !ok {
 		return "", errors.New("failed to get ingress from provided object")
 	}
@@ -45,8 +45,8 @@ func (d *DaemonIngressMonitor) ValidateResource(obj interface{}) (string, error)
 	return objectId, nil
 }
 
-func (d *DaemonIngressMonitor) GetResourceHostsEntry(obj interface{}) hostsfile.HostsEntry {
-	ingress, ok := obj.(*networkingv1.Ingress)
+func (d *DaemonBetaIngressMonitor) GetResourceHostsEntry(obj interface{}) hostsfile.HostsEntry {
+	ingress, ok := obj.(*extensionsv1beta1.Ingress)
 	if !ok {
 		panic("Failed to get Ingress from pre-validated type.")
 	}
