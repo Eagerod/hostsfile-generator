@@ -1,4 +1,4 @@
-FROM golang:1.13 AS build
+FROM golang:1.18 AS build
 
 WORKDIR /usr/src/app
 
@@ -11,6 +11,7 @@ ARG VERSION UnspecifiedContainerVersion
 COPY . .
 
 RUN make
+RUN make test
 
 
 FROM debian:10 AS app
