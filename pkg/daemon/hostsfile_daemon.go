@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"log"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -49,8 +50,17 @@ func NewHostsFileDaemon(config DaemonConfig) *HostsFileDaemon {
 func (hfd *HostsFileDaemon) Run() {
 	defer close(hfd.updatesChannel)
 
+	serverVersion, _ := hfd.config.KubernetesClientSet.Discovery().ServerVersion()
+	serverMajor, _ := strconv.Atoi(serverVersion.Major)
+	serverMinor, _ := strconv.Atoi(serverVersion.Minor)
+
 	go hfd.performUpdates()
-	go hfd.Monitor(&DaemonBetaIngressMonitor{hfd.config.IngressIp, hfd.config.SearchDomain})
+
+	// If the server is running a newer version of k8s, don't monitor
+	//   deprecated resources.
+	if serverMajor == 1 && serverMinor < 22 {
+		go hfd.Monitor(&DaemonBetaIngressMonitor{hfd.config.IngressIp, hfd.config.SearchDomain})
+	}
 	go hfd.Monitor(&DaemonIngressMonitor{hfd.config.IngressIp, hfd.config.SearchDomain})
 	go hfd.Monitor(&DaemonServiceMonitor{hfd.config.SearchDomain})
 	go hfd.updateAfterInterval(time.Second * 60)
