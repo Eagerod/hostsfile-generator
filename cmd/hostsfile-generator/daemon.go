@@ -9,6 +9,8 @@ import (
 	"github.com/Eagerod/hostsfile-generator/pkg/daemon"
 )
 
+var VersionBuild string = "unstable-dev"
+
 func Run() error {
 	ip := flag.String("ingress-ip", "", "IP address of the NGINX Ingress Controller.")
 	searchDomain := flag.String("search-domain", "", "Search domain to append to bare hostnames.")

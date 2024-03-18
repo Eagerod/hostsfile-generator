@@ -11,7 +11,7 @@ import (
 
 // This file is basically a copy paste of `hostsfile_tests`.
 // Not sure if there's a more sensible technique of testing things that should
-//   have the same interface + behaviour?
+// have the same interface + behaviour?
 func TestConcurrentHostsFileSetHostnames(t *testing.T) {
 	hf := NewConcurrentHostsFile()
 
