@@ -22,7 +22,7 @@ func (d *DaemonIngressMonitor) Name() string {
 }
 
 func (d *DaemonIngressMonitor) Informer(sif informers.SharedInformerFactory) cache.SharedInformer {
-	return sif.Extensions().V1beta1().Ingresses().Informer()
+	return sif.Networking().V1().Ingresses().Informer()
 }
 
 func (d *DaemonIngressMonitor) ValidateResource(obj interface{}) (string, error) {
