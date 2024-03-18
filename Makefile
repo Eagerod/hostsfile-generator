@@ -11,9 +11,7 @@ CMD_PACKAGE_DIR := ./cmd/hostsfile-generator
 PKG_PACKAGE_DIR := ./pkg/*
 PACKAGE_PATHS := $(CMD_PACKAGE_DIR) $(PKG_PACKAGE_DIR)
 
-AUTOGEN_VERSION_FILENAME=$(CMD_PACKAGE_DIR)/version-temp.go
-
-SRC := $(shell find . -iname "*.go" -and -not -name "*_test.go") $(AUTOGEN_VERSION_FILENAME)
+SRC := $(shell find . -iname "*.go" -and -not -name "*_test.go")
 
 # Publish targets are treated as phony to force rebuilds.
 PUBLISH_DIR=publish
@@ -29,7 +27,8 @@ all: $(BIN_NAME)
 
 $(BIN_NAME): $(SRC)
 	@mkdir -p $(BUILD_DIR)
-	$(GO) build -o $(BIN_NAME) $(MAIN_FILE)
+	version="$${VERSION:-$$(git describe --dirty)}"; \
+	$(GO) build -o $(BIN_NAME) -ldflags="-X github.com/Eagerod/hostsfile-generator/cmd/hostsfile-generator.VersionBuild=$$version" $(MAIN_FILE)
 
 
 .PHONY: publish
@@ -73,11 +72,6 @@ test-cover: $(SRC)
 .PHONY: coverage
 coverage: test-cover
 	$(GO) tool cover -func=coverage.out
-
-.INTERMEDIATE: $(AUTOGEN_VERSION_FILENAME)
-$(AUTOGEN_VERSION_FILENAME):
-	@version="$${VERSION:-$$(git describe --dirty)}"; \
-	printf "package cmd\n\nconst VersionBuild = \"%s\"" $$version > $@
 
 .PHONY: pretty-coverage
 pretty-coverage: test-cover
