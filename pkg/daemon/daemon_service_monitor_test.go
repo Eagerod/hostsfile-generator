@@ -32,7 +32,7 @@ func TestDaemonServiceMonitorValidateResource(t *testing.T) {
 
 	objectId, err := drm.ValidateResource(service)
 	assert.Nil(t, err)
-	assert.Equal(t, "default/some-service", objectId)
+	assert.Equal(t, "v1.service/default/some-service", objectId)
 }
 
 func TestDaemonServiceMonitorValidateResourceNotService(t *testing.T) {
@@ -50,8 +50,8 @@ func TestDaemonServiceMonitorValidateResourceNotLoadBalancer(t *testing.T) {
 	service.Spec.Type = "NodePort"
 
 	objectId, err := drm.ValidateResource(service)
-	assert.Equal(t, "skipping service (default/some-service) because it isn't of type LoadBalancer", err.Error())
-	assert.Equal(t, "default/some-service", objectId)
+	assert.Equal(t, "skipping service (v1.service/default/some-service) because it isn't of type LoadBalancer", err.Error())
+	assert.Equal(t, "v1.service/default/some-service", objectId)
 }
 
 func TestDaemonServiceMonitorGetResourceHostsEntry(t *testing.T) {

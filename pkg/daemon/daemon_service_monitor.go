@@ -29,7 +29,7 @@ func (d *DaemonServiceMonitor) ValidateResource(obj interface{}) (string, error)
 		return "", errors.New("failed to get service from provided object")
 	}
 
-	objectId := fmt.Sprintf("%s/%s", service.ObjectMeta.Namespace, service.ObjectMeta.Name)
+	objectId := fmt.Sprintf("v1.service/%s/%s", service.ObjectMeta.Namespace, service.ObjectMeta.Name)
 
 	if service.Spec.Type != "LoadBalancer" {
 		return objectId, fmt.Errorf("skipping service (%s) because it isn't of type LoadBalancer", objectId)

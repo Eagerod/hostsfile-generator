@@ -31,7 +31,7 @@ func (d *DaemonBetaIngressMonitor) ValidateResource(obj interface{}) (string, er
 		return "", errors.New("failed to get ingress from provided object")
 	}
 
-	objectId := fmt.Sprintf("%s/%s", ingress.ObjectMeta.Namespace, ingress.ObjectMeta.Name)
+	objectId := fmt.Sprintf("extensionsv1beta1.ingress/%s/%s", ingress.ObjectMeta.Namespace, ingress.ObjectMeta.Name)
 
 	ingressClass, ok := ingress.Annotations["kubernetes.io/ingress.class"]
 	if !ok {

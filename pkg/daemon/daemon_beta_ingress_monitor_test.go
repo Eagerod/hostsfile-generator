@@ -38,7 +38,7 @@ func TestDaemonBetaIngressMonitorValidateResource(t *testing.T) {
 
 	objectId, err := drm.ValidateResource(ingress)
 	assert.Nil(t, err)
-	assert.Equal(t, "default/some-ingress", objectId)
+	assert.Equal(t, "extensionsv1beta1.ingress/default/some-ingress", objectId)
 }
 
 func TestDaemonBetaIngressMonitorValidateResourceNotIngress(t *testing.T) {
@@ -56,8 +56,8 @@ func TestDaemonBetaIngressMonitorValidateResourceNoIngressClass(t *testing.T) {
 	delete(ingress.Annotations, "kubernetes.io/ingress.class")
 
 	objectId, err := drm.ValidateResource(ingress)
-	assert.Equal(t, "skipping ingress (default/some-ingress) because it doesn't have an ingress class", err.Error())
-	assert.Equal(t, "default/some-ingress", objectId)
+	assert.Equal(t, "skipping ingress (extensionsv1beta1.ingress/default/some-ingress) because it doesn't have an ingress class", err.Error())
+	assert.Equal(t, "extensionsv1beta1.ingress/default/some-ingress", objectId)
 }
 
 func TestDaemonBetaIngressMonitorValidateResourceNotNginxIngress(t *testing.T) {
@@ -67,8 +67,8 @@ func TestDaemonBetaIngressMonitorValidateResourceNotNginxIngress(t *testing.T) {
 	ingress.Annotations["kubernetes.io/ingress.class"] = "nginx-external"
 
 	objectId, err := drm.ValidateResource(ingress)
-	assert.Equal(t, "skipping ingress (default/some-ingress) because it doesn't belong to NGINX Ingress Controller", err.Error())
-	assert.Equal(t, "default/some-ingress", objectId)
+	assert.Equal(t, "skipping ingress (extensionsv1beta1.ingress/default/some-ingress) because it doesn't belong to NGINX Ingress Controller", err.Error())
+	assert.Equal(t, "extensionsv1beta1.ingress/default/some-ingress", objectId)
 }
 
 func TestDaemonBetaIngressMonitorGetResourceHostsEntry(t *testing.T) {
