@@ -9,12 +9,16 @@ import (
 	"github.com/Eagerod/hostsfile-generator/pkg/hostsfile"
 )
 
+var DefaultIngressClass string = "nginx"
+var InvalidIngressClass string = "nginx-external"
+var EmptyIngressClass string = ""
+
 func validTestIngress() *networkingv1.Ingress {
 	ingress := networkingv1.Ingress{}
 	ingress.ObjectMeta.Namespace = "default"
 	ingress.ObjectMeta.Name = "some-ingress"
 	ingress.Annotations = make(map[string]string)
-	ingress.Annotations["kubernetes.io/ingress.class"] = "nginx"
+	ingress.Spec.IngressClassName = &DefaultIngressClass
 
 	ingress.Spec.Rules = []networkingv1.IngressRule{
 		networkingv1.IngressRule{
@@ -41,6 +45,17 @@ func TestDaemonIngressMonitorValidateResource(t *testing.T) {
 	assert.Equal(t, "networkingv1.ingress/default/some-ingress", objectId)
 }
 
+func TestDaemonIngressMonitorValidateResourceLegacy(t *testing.T) {
+	drm := DaemonIngressMonitor{}
+
+	ingress := validTestIngress()
+	ingress.Annotations["kubernetes.io/ingress.class"] = "nginx"
+
+	objectId, err := drm.ValidateResource(ingress)
+	assert.Nil(t, err)
+	assert.Equal(t, "networkingv1.ingress/default/some-ingress", objectId)
+}
+
 func TestDaemonIngressMonitorValidateResourceNotIngress(t *testing.T) {
 	drm := DaemonIngressMonitor{}
 
@@ -53,7 +68,7 @@ func TestDaemonIngressMonitorValidateResourceNoIngressClass(t *testing.T) {
 	drm := DaemonIngressMonitor{}
 
 	ingress := validTestIngress()
-	delete(ingress.Annotations, "kubernetes.io/ingress.class")
+	ingress.Spec.IngressClassName = &EmptyIngressClass
 
 	objectId, err := drm.ValidateResource(ingress)
 	assert.Equal(t, "skipping ingress (networkingv1.ingress/default/some-ingress) because it doesn't have an ingress class", err.Error())
@@ -64,7 +79,7 @@ func TestDaemonIngressMonitorValidateResourceNotNginxIngress(t *testing.T) {
 	drm := DaemonIngressMonitor{}
 
 	ingress := validTestIngress()
-	ingress.Annotations["kubernetes.io/ingress.class"] = "nginx-external"
+	ingress.Spec.IngressClassName = &InvalidIngressClass
 
 	objectId, err := drm.ValidateResource(ingress)
 	assert.Equal(t, "skipping ingress (networkingv1.ingress/default/some-ingress) because it doesn't belong to NGINX Ingress Controller", err.Error())

@@ -1,14 +1,20 @@
 package daemon
 
 import (
+	"fmt"
 	"log"
+	"os"
 	"strconv"
 	"syscall"
 	"time"
+)
 
+import (
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/cache"
+)
 
+import (
 	"github.com/Eagerod/hostsfile-generator/pkg/hostsfile"
 	"github.com/Eagerod/hostsfile-generator/pkg/interrupt"
 )
@@ -51,6 +57,11 @@ func (hfd *HostsFileDaemon) Run() {
 	defer close(hfd.updatesChannel)
 
 	serverVersion, _ := hfd.config.KubernetesClientSet.Discovery().ServerVersion()
+	if serverVersion == nil {
+		fmt.Fprintf(os.Stderr, "Failed to get server version\n")
+		os.Exit(1)
+	}
+
 	serverMajor, _ := strconv.Atoi(serverVersion.Major)
 	serverMinor, _ := strconv.Atoi(serverVersion.Minor)
 

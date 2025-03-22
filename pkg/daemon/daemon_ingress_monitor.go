@@ -33,9 +33,16 @@ func (d *DaemonIngressMonitor) ValidateResource(obj interface{}) (string, error)
 
 	objectId := fmt.Sprintf("networkingv1.ingress/%s/%s", ingress.ObjectMeta.Namespace, ingress.ObjectMeta.Name)
 
-	ingressClass, ok := ingress.Annotations["kubernetes.io/ingress.class"]
-	if !ok {
-		return objectId, fmt.Errorf("skipping ingress (%s) because it doesn't have an ingress class", objectId)
+	ingressClass := ""
+	if ingress.Spec.IngressClassName != nil {
+		ingressClass = *ingress.Spec.IngressClassName
+	}
+
+	if ingressClass == "" {
+		ingressClass, ok = ingress.Annotations["kubernetes.io/ingress.class"]
+		if !ok {
+			return objectId, fmt.Errorf("skipping ingress (%s) because it doesn't have an ingress class", objectId)
+		}
 	}
 
 	if ingressClass != "nginx" {
